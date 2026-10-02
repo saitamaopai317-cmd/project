@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SOS // EMERGENCY BEACON</title>
+    <style>
+        body {
+            background: #051005; color: #33ff33; font-family: 'Courier New', monospace;
+            margin: 0; height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; user-select: none;
+            background-image: linear-gradient(rgba(51, 255, 51, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(51, 255, 51, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px; position: relative; overflow: hidden;
+        }
+
+        .pixel-panel {
+            border: 4px solid #33ff33; padding: 20px; text-align: center;
+            width: 85%; max-width: 350px; background: #020802;
+            box-shadow: 8px 8px 0px rgba(51, 255, 51, 0.2), inset 0 0 20px rgba(51,255,51,0.1);
+        }
+
+        /* Retro UI Elements */
+        .header-bar { border-bottom: 2px dashed #33ff33; margin-bottom: 15px; padding-bottom: 10px; }
+        h1 { font-size: 24px; margin: 0; letter-spacing: 2px; text-shadow: 2px 2px 0px #005500; }
+        .sys-text { font-size: 10px; font-weight: bold; margin: 5px 0; }
+
+        /* Fingerprint Scanner */
+        .scan-container {
+            width: 150px; height: 180px; margin: 20px auto; position: relative;
+            border: 2px solid #115511; background: #000; cursor: pointer; touch-action: none;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+        }
+        .scan-container:active { transform: scale(0.98); border-color: #33ff33; }
+
+        /* ASCII/Retro Fingerprint Art */
+        .fingerprint {
+            font-size: 12px; line-height: 12px; color: #115511; white-space: pre;
+            font-family: monospace; transition: color 0.2s; position: relative; z-index: 2;
+        }
+        .scan-container:active .fingerprint { color: #33ff33; text-shadow: 0 0 10px #33ff33; }
+
+        /* Scanning Laser Line */
+        .scan-line {
+            position: absolute; left: 0; bottom: 0; width: 100%; height: 0%;
+            background: rgba(51, 255, 51, 0.3); border-top: 2px solid #33ff33;
+            box-shadow: 0 -10px 20px rgba(51,255,51,0.5); z-index: 3; transition: height 0.1s linear;
+        }
+
+        .terminal-readout { background: #000; border: 2px solid #115511; padding: 10px; font-size: 11px; text-align: left; height: 60px; color: #aaa; overflow: hidden; margin-top: 15px; }
+
+        /* FULL SCREEN COOLDOWN LOCK */
+        #lockdown-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 999; display: none; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            border: 10px solid #33ff33; box-sizing: border-box;
+        }
+        #lockdown-screen h2 { font-size: 30px; margin: 0 0 10px 0; color: #33ff33; animation: pulse 1s infinite alternate; }
+        #cooldown-timer { font-size: 80px; font-weight: bold; color: #fff; text-shadow: 0 0 20px #33ff33; margin: 20px 0; }
+        @keyframes pulse { from { opacity: 1; } to { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <!-- MAIN APP SCREEN -->
+    <div class="pixel-panel" id="main-app">
+        <div class="header-bar">
+            <h1>MEDICAL_SOS</h1>
+            <div class="sys-text">ID: <span id="device-id"></span></div>
+            <div class="sys-text" style="color:#aaa;">HOLD THUMB TO SCAN</div>
+        </div>
+
+        <div class="scan-container" id="scanner-btn">
+            <!-- ASCII Fingerprint representation -->
+            <div class="fingerprint">
+  _,-~-.
+ /.-'~_.\
+(/_,-' \ \
+ ||__.-' ||
+ || _,--' |
+  \ \_.-' /
+   `-._,-'
+            </div>
+            <div class="scan-line" id="scan-laser"></div>
+        </div>
+
+        <div class="terminal-readout" id="readout">
+            > AWAITING BIOMETRIC INPUT...<br>
+        </div>
+    </div>
+
+    <!-- FULL SCREEN LOCKDOWN -->
+    <div id="lockdown-screen">
+        <h2>TRANSMISSION SECURE</h2>
+        <div style="color: #aaa; font-size: 14px;">MEDICAL AID INBOUND. DEVICE LOCKED.</div>
+        <div id="cooldown-timer">60</div>
+        <div style="color: #555; font-size: 10px; margin-top: 20px;">ANTI-SPAM PROTOCOL ACTIVE</div>
+    </div>
+
+    <script>
+        // Device ID Generation
+        if (!localStorage.getItem('sdn_device_id')) { localStorage.setItem('sdn_device_id', 'CIV-' + Math.floor(Math.random() * 99999)); }
+        document.getElementById('device-id').innerText = localStorage.getItem('sdn_device_id');
+
+        const btn = document.getElementById('scanner-btn');
+        const laser = document.getElementById('scan-laser');
+        const readout = document.getElementById('readout');
+        const lockdown = document.getElementById('lockdown-screen');
+        const timerDisplay = document.getElementById('cooldown-timer');
+
+        let pressTimer; let countdownTimer;
+        let progress = 0; let isTransmitting = false;
+
+        // Check active cooldown on load
+        checkCooldown();
+
+        function startPress(e) {
+            if(e.type === 'touchstart') e.preventDefault();
+            if (isTransmitting || lockdown.style.display === 'flex') return;
+            readout.innerHTML += "> READING BIOMETRICS...<br>";
+            progress = 0;
+            pressTimer = setInterval(() => {
+                progress += 5;
+                laser.style.height = progress + '%';
+                if (progress >= 100) {
+                    clearInterval(pressTimer); executeTransmission();
+                }
+            }, 150); // 3-second hold
+        }
+
+        function endPress(e) {
+            if(e.type === 'touchend') e.preventDefault();
+            if (isTransmitting || lockdown.style.display === 'flex') return;
+            clearInterval(pressTimer);
+            progress = 0; laser.style.height = '0%';
+            if(readout.innerHTML.includes("READING")) { readout.innerHTML += "> SCAN INCOMPLETE.<br>"; }
+        }
+
+        btn.addEventListener('mousedown', startPress);
+        btn.addEventListener('mouseup', endPress);
+        btn.addEventListener('mouseleave', endPress);
+        btn.addEventListener('touchstart', startPress);
+        btn.addEventListener('touchend', endPress);
+
+        async function executeTransmission() {
+            isTransmitting = true;
+            readout.innerHTML += "> <span style='color:#33ff33'>IDENTITY CONFIRMED. TRANSMITTING...</span><br>";
+
+            const payload = { civilian_name: localStorage.getItem('sdn_device_id'), location: "AUTO-LOCATED", signal_type: "emergency", requested_heroes: "2,4" };
+
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/send_signal.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('sdn_cooldown_green', Date.now() + 60000); // 60 seconds
+                    startLockdownSequence();
+                } else {
+                    readout.innerHTML += "> ERROR: " + data.error + "<br>";
+                    isTransmitting = false; laser.style.height = '0%';
+                }
+            } catch(e) {
+                readout.innerHTML += "> NETWORK FAILURE.<br>";
+                isTransmitting = false; laser.style.height = '0%';
+            }
+        }
+
+        function checkCooldown() {
+            const unlockTime = localStorage.getItem('sdn_cooldown_green');
+            if (unlockTime && Date.now() < unlockTime) {
+                startLockdownSequence();
+            }
+        }
+
+        function startLockdownSequence() {
+            isTransmitting = true;
+            document.getElementById('main-app').style.display = 'none';
+            lockdown.style.display = 'flex';
+
+            countdownTimer = setInterval(() => {
+                const unlockTime = localStorage.getItem('sdn_cooldown_green');
+                const remaining = Math.ceil((unlockTime - Date.now()) / 1000);
+
+                if (remaining <= 0) {
+                    clearInterval(countdownTimer);
+                    lockdown.style.display = 'none';
+                    document.getElementById('main-app').style.display = 'block';
+                    laser.style.height = '0%'; readout.innerHTML = "> SYSTEM RESET. READY.<br>";
+                    isTransmitting = false;
+                } else {
+                    timerDisplay.innerText = remaining;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

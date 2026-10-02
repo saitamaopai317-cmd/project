@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SDN // HIGH COMMAND ADMIN</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --teal: #1eb9a6; --danger: #e25b3e; --admin: #ffeb3b; }
+        body { background: #050505; color: #e6dfd1; font-family: 'Courier New', monospace; margin: 0; height: 100vh; overflow: hidden; }
+        
+        /* --- DIRECTOR LOGIN SCREEN --- */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #020202; z-index: 9999; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        .login-box {
+            border: 2px solid var(--admin); padding: 50px; text-align: center;
+            background: rgba(10, 10, 0, 0.9); box-shadow: 0 0 50px rgba(255,235,59,0.1);
+            width: 400px;
+        }
+        .login-box h1 { color: var(--admin); letter-spacing: 5px; margin-top: 0; font-size: 1.5rem; text-shadow: 0 0 10px rgba(255,235,59,0.5); }
+        .login-box p { color: #888; font-size: 0.8rem; margin-bottom: 30px; letter-spacing: 1px; }
+        .login-box input {
+            width: 100%; background: #000; border: 1px solid var(--admin); color: white;
+            padding: 15px; margin-bottom: 20px; box-sizing: border-box; text-align: center;
+            font-family: inherit; font-size: 1.1rem; outline: none; font-weight: bold;
+        }
+        .login-box input:focus { box-shadow: 0 0 15px rgba(255,235,59,0.3); }
+        .login-box button {
+            width: 100%; background: var(--admin); color: black; border: none;
+            padding: 15px; font-weight: bold; cursor: pointer; font-family: inherit; font-size: 1.1rem;
+            letter-spacing: 2px; transition: 0.2s;
+        }
+        .login-box button:hover { background: white; }
+        #login-error { color: var(--danger); font-size: 0.85rem; margin-top: 15px; height: 15px; font-weight: bold; }
+
+        /* --- MAIN DASHBOARD (Hidden until logged in) --- */
+        #main-dashboard {
+            display: none; height: 100%; box-sizing: border-box; padding: 20px; gap: 20px;
+        }
+
+        /* --- CHAT STYLES --- */
+        .chat-container { flex: 1.2; border: 2px solid var(--admin); background: #0a0a05; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(255,235,59,0.1); }
+        .chat-header { background: var(--admin); color: black; font-weight: bold; padding: 15px; text-align: center; letter-spacing: 2px; font-size: 1.1rem; }
+        .chat-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .chat-input-wrapper { display: flex; gap: 10px; padding: 15px; background: #111; border-top: 2px solid var(--admin); }
+        .chat-input-wrapper input { flex: 1; background: #000; border: 1px solid #555; color: white; padding: 15px; outline: none; font-family: inherit; font-size: 1rem; }
+        .chat-input-wrapper input:focus { border-color: var(--admin); box-shadow: 0 0 10px rgba(255,235,59,0.2); }
+        .chat-input-wrapper button { background: var(--admin); color: black; border: none; font-weight: bold; padding: 0 30px; cursor: pointer; font-family: inherit; font-size: 1.1rem; transition: 0.2s; }
+        
+        .msg { max-width: 85%; padding: 10px 15px; font-size: 1rem; line-height: 1.4; }
+        .msg.tx { align-self: flex-end; background: #333311; border-right: 4px solid var(--admin); }
+        .msg.rx { align-self: flex-start; background: #3a1f1f; border-left: 4px solid var(--danger); color: #ddd; }
+
+        /* --- VAULT STYLES --- */
+        .vault-container { flex: 2; border: 2px dashed var(--danger); background: rgba(226, 91, 62, 0.05); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+        #vault-list { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; flex: 1; align-content: flex-start; margin-bottom: 20px; }
+        
+        /* --- DOSSIER CREATOR STYLES --- */
+        .creator-panel { background: rgba(10,0,0,0.9); border: 1px solid var(--danger); padding: 20px; margin-top: auto; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+        .creator-panel input[type="text"] { background: #000; border: 1px solid #555; color: white; padding: 10px; outline: none; font-family: inherit; flex: 1; }
+        .creator-panel input[type="text"]:focus { border-color: var(--danger); }
+        .creator-panel input[type="number"] { background: #000; border: 1px solid #555; color: var(--danger); padding: 5px; outline: none; font-family: inherit; width: 45px; text-align: center; font-weight: bold; }
+        .creator-btn { background: #220000; color: var(--danger); border: 1px solid var(--danger); padding: 12px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; letter-spacing: 2px; }
+        .creator-btn:hover { background: var(--danger); color: black; }
+    </style>
+</head>
+<body>
+
+    <!-- LOCKDOWN SCREEN -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h1>HIGH COMMAND</h1>
+            <p>DIRECTOR-LEVEL AUTHORIZATION REQUIRED</p>
+            <input type="password" id="director-pass" placeholder="ENTER SECURITY KEY">
+            <button onclick="authDirector()">AUTHORIZE UPLINK</button>
+            <div id="login-error"></div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="main-dashboard">
+        <!-- LEFT: LIVE CHAT -->
+        <div class="chat-container">
+            <div class="chat-header">DIRECTOR ↔ DISPATCHER SECURE LINE</div>
+            <div class="chat-window" id="admin-chat-window">
+                <div class="msg sys" style="color:#888; text-align:center; font-style:italic; border:none; width:100%;">CONNECTION ESTABLISHED.</div>
+            </div>
+            <div class="chat-input-wrapper">
+                <input type="text" id="admin-chat-input" placeholder="Type message to Dispatcher here...">
+                <button onclick="sendAdminChat()">TRANSMIT</button>
+            </div>
+        </div>
+
+        <!-- RIGHT: HERO VAULT -->
+        <div class="vault-container">
+            <h2 style="color: var(--danger); text-align: center; border-bottom: 1px dashed var(--danger); padding-bottom: 10px; margin-top:0;">TOP SECRET: BLACK OPS VAULT</h2>
+            <div id="vault-list"></div>
+
+            <!-- NEW HERO CREATOR -->
+            <div class="creator-panel">
+                <h3 style="color: var(--danger); margin-top:0; letter-spacing: 1px;">[ + COMPILE NEW DOSSIER ]</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="new-alias" placeholder="ALIAS (e.g. TITAN)" autocomplete="off">
+                    <input type="text" id="new-skill" placeholder="CLASS (e.g. Brawler)" autocomplete="off">
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="new-trueid" placeholder="TRUE ID (e.g. John Doe)" autocomplete="off">
+                    <input type="text" id="new-blood" placeholder="BLOOD TYPE (e.g. O-)" autocomplete="off">
+                </div>
+                <input type="text" id="new-eval" placeholder="EVALUATION NOTES (Lore / Story)" autocomplete="off" style="width: 100%; box-sizing: border-box; margin-bottom: 15px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; color: #aaa; font-size: 13px; align-items: center; justify-content: center;">
+                    <strong>BASE STATS:</strong>
+                    ATK <input type="number" id="s-atk" value="50" min="0" max="100">
+                    DEF <input type="number" id="s-def" value="50" min="0" max="100">
+                    AGI <input type="number" id="s-agi" value="50" min="0" max="100">
+                    COM <input type="number" id="s-com" value="50" min="0" max="100">
+                    INT <input type="number" id="s-int" value="50" min="0" max="100">
+                </div>
+                <button class="creator-btn" onclick="compileDossier()">[ ADD TO RESERVE VAULT ]</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIN LOGIC ---
+        async function authDirector() {
+            const pass = document.getElementById('director-pass').value;
+            const err = document.getElementById('login-error');
+            err.style.color = "var(--admin)";
+            err.innerText = "AUTHENTICATING KEY...";
+
+            try {
+                // Call your secure Bcrypt auth.php file
+                const res = await fetch('/BACKEND/CODE_PHP/auth.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                });
+                const data = await res.json();
+
+                if (data.success && data.role === 'super_admin') {
+                    // Correct password for Director! Let them in.
+                    sessionStorage.setItem('sdn_role', data.role);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('main-dashboard').style.display = 'flex';
+                    
+                    // Boot up the loops now that they are logged in
+                    renderVault();
+                    setInterval(fetchAdminChat, 2000); 
+                    setInterval(renderVault, 5000);
+                } else if (data.success && data.role !== 'super_admin') {
+                    // They used the Dispatcher password (200727) on the Director screen
+                    err.style.color = "var(--danger)";
+                    err.innerText = "ACCESS DENIED: CLEARANCE TOO LOW.";
+                } else {
+                    err.style.color = "var(--danger)";
+                    err.innerText = data.message || "ACCESS DENIED.";
+                }
+            } catch (e) {
+                err.style.color = "var(--danger)";
+                err.innerText = "UPLINK FAILED.";
+            }
+        }
+
+        // Check if they are already logged in so they don't have to type it every time they refresh
+        if (sessionStorage.getItem('sdn_role') === 'super_admin') {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-dashboard').style.display = 'flex';
+            renderVault();
+            setInterval(fetchAdminChat, 2000); 
+            setInterval(renderVault, 5000);
+        }
+
+        // Bind Enter key for the Login screen
+        document.getElementById('director-pass').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); authDirector(); }
+        });
+
+
+        // --- CHAT LOGIC ---
+        async function fetchAdminChat() {
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/chat_admin.php');
+                const data = await res.json();
+                if (data.success) {
+                    const win = document.getElementById('admin-chat-window');
+                    let html = '';
+                    data.messages.forEach(msg => {
+                        const isMe = msg.sender === 'ADMIN';
+                        html += `<div class="msg ${isMe ? 'tx' : 'rx'}"><strong>[${msg.sender}]</strong>: ${msg.message}</div>`;
+                    });
+                    if (html !== '' && win.innerHTML !== html) {
+                        win.innerHTML = html;
+                        win.scrollTop = win.scrollHeight;
+                    }
+                }
+            } catch(e){}
+        }
+
+        async function sendAdminChat() {
+            const input = document.getElementById('admin-chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+            input.value = '';
+            await fetch('/BACKEND/CODE_PHP/chat_admin.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sender: 'ADMIN', message: message }) });
+            fetchAdminChat();
+        }
+
+        document.getElementById('admin-chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); sendAdminChat(); }
+        });
+
+        // --- VAULT LOGIC ---
+        const classifiedAgents = {
+            "C1": { name: "ECLIPSE", skill: "mental", true_name: "Kaelen Vance", blood_type: "O- Negative", eval: "Clinical empathy suppression. Highly effective in combat.", stats: { combat: 90, defense: 60, agility: 80, comms: 40, intel: 95 } },
+            "C2": { name: "OVERRIDE", skill: "tech", true_name: "Jax Mercer", blood_type: "AB+ Enhanced", eval: "Textbook sociopathy channeled into tactical efficiency.", stats: { combat: 85, defense: 85, agility: 70, comms: 90, intel: 85 } }
+        };
+        let vaultChartInstances = {};
+        let customIdCounter = 900; 
+
+        // --- CREATE NEW HERO LOGIC ---
+        function compileDossier() {
+            const alias = document.getElementById('new-alias').value.trim();
+            const skill = document.getElementById('new-skill').value.trim();
+            if(!alias || !skill) { alert("ERROR: Alias and Class are required fields."); return; }
+
+            const newId = customIdCounter.toString();
+            customIdCounter++;
+
+            classifiedAgents[newId] = {
+                name: alias.toUpperCase(),
+                skill: skill.toLowerCase(),
+                true_name: document.getElementById('new-trueid').value.trim() || 'CLASSIFIED',
+                blood_type: document.getElementById('new-blood').value.trim() || 'UNKNOWN',
+                eval: document.getElementById('new-eval').value.trim() || 'No evaluation notes provided.',
+                stats: {
+                    combat: parseInt(document.getElementById('s-atk').value) || 50,
+                    defense: parseInt(document.getElementById('s-def').value) || 50,
+                    agility: parseInt(document.getElementById('s-agi').value) || 50,
+                    comms: parseInt(document.getElementById('s-com').value) || 50,
+                    intel: parseInt(document.getElementById('s-int').value) || 50
+                }
+            };
+
+            document.getElementById('new-alias').value = '';
+            document.getElementById('new-skill').value = '';
+            document.getElementById('new-trueid').value = '';
+            document.getElementById('new-blood').value = '';
+            document.getElementById('new-eval').value = '';
+            
+            renderVault();
+        }
+
+        async function renderVault() {
+            const container = document.getElementById('vault-list');
+            let activeHeroIds = [];
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/get_heroes.php');
+                const data = await res.json();
+                if (data.success) activeHeroIds = Object.keys(data.heroes);
+            } catch (e) {}
+
+            let html = '';
+
+            Object.keys(classifiedAgents).forEach(id => {
+                if (activeHeroIds.includes(id)) return;
+                const agent = classifiedAgents[id];
+                html += `
+                    <div style="border:1px solid var(--danger); background:rgba(10,0,0,0.9); width: 400px; display: flex; flex-direction: column;">
+                        <div style="background: rgba(226,91,62,0.1); padding: 10px; border-bottom: 1px solid #331111;">
+                            <h3 style="color:var(--danger); margin:0;">[ ALIAS: ${agent.name} ]</h3>
+                            <div style="color:#aaa; font-size:12px;">CLASS: ${agent.skill.toUpperCase()}</div>
+                        </div>
+                        <div style="display: flex; padding: 10px; gap: 10px;">
+                            <div style="flex: 1; font-size:11px; color:#888;">
+                                <p><strong>TRUE ID:</strong> ${agent.true_name}</p><p><strong>BLOOD:</strong> ${agent.blood_type}</p><p><em>"${agent.eval}"</em></p>
+                            </div>
+                            <div style="width: 120px; height: 120px; position: relative;"><canvas id="vault-radar-${id}"></canvas></div>
+                        </div>
+                        <button onclick="authorizeTransfer('${id}')" style="background:var(--danger); color:white; border:none; padding:12px; font-weight:bold; cursor:pointer; font-size: 1rem; transition: 0.2s;">[ AUTHORIZE DEPLOYMENT ]</button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+
+            setTimeout(() => {
+                Object.keys(classifiedAgents).forEach(id => {
+                    if (activeHeroIds.includes(id)) return;
+                    const canvas = document.getElementById(`vault-radar-${id}`);
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    if (vaultChartInstances[id]) vaultChartInstances[id].destroy();
+                    vaultChartInstances[id] = new Chart(ctx, {
+                        type: 'radar',
+                        data: { labels: ['ATK', 'DEF', 'AGI', 'COM', 'INT'], datasets: [{ data: [classifiedAgents[id].stats.combat, classifiedAgents[id].stats.defense, classifiedAgents[id].stats.agility, classifiedAgents[id].stats.comms, classifiedAgents[id].stats.intel], backgroundColor: 'rgba(226, 91, 62, 0.2)', borderColor: '#e25b3e', borderWidth: 1, pointRadius: 0 }] },
+                        options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 100, ticks:{display:false}, pointLabels:{color:'#aaa', font:{size:8}} } }, plugins: { legend: { display: false } } }
+                    });
+                });
+            }, 50);
+        }
+
+        async function authorizeTransfer(id) {
+            const agent = classifiedAgents[id];
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/authorize_agent.php', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-SDN-Auth': 'SFXC-BlackOps-2026-Alpha' },
+                    body: JSON.stringify({ 
+                        name: agent.name, skill: agent.skill,
+                        combat: agent.stats.combat, defense: agent.stats.defense, 
+                        agility: agent.stats.agility, comms: agent.stats.comms, intel: agent.stats.intel
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    delete classifiedAgents[id]; 
+                    renderVault(); 
+                } else {
+                    alert("SYSTEM ERROR: " + data.error);
+                }
+            } catch (e) {
+                alert("TRANSMISSION FAILED: Check connection to MariaDB.");
+            }
+        }
+    </script>
+</body>
+</html>
