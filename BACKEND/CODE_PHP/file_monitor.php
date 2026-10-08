@@ -1,10 +1,13 @@
 <?php
+require_once __DIR__ . '/security_guard.php';
 header('Content-Type: application/json');
 
 // The core files that must be protected from tampering
 $protected_files = [
     'auth.php',
     'waf.php',
+    'security_guard.php',
+    'defcon.php',
     'chat_admin.php',
     'authorize_agent.php',
     'send_signal.php'

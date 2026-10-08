@@ -3,6 +3,7 @@
 require_once __DIR__ . '/waf.php';
 require_once __DIR__ . '/db.php';
 
+require_once __DIR__ . '/security_guard.php';
 header('Content-Type: application/json');
 
 $raw_input = file_get_contents('php://input');

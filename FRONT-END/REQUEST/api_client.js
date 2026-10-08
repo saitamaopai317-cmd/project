@@ -5,6 +5,7 @@ let selectedIncidentId = null;
 let isAnimating = false; 
 let gameLoop;
 let heroChartInstance = null;
+let activeChatHeroId = null;
 
 // --- MAP CAMERA STATE ---
 let currentZoom = 1;
@@ -28,6 +29,29 @@ for (let row = 0; row < 15; row++) {
     }
 }
 staticCityHTML += '</div>';
+
+const availableStreetNames = [
+    'Mission Street',
+    'Harbor Avenue',
+    'Beacon Boulevard',
+    'Cedar Street',
+    'Market Road',
+    'Foundry Way',
+    'Summit Avenue',
+    'Riverfront Drive'
+];
+const streetNames = [];
+while (streetNames.length < 2) {
+    const randomIndex = Math.floor(Math.random() * availableStreetNames.length);
+    streetNames.push(availableStreetNames.splice(randomIndex, 1)[0]);
+}
+
+function updateBuildingVisibility() {
+    const wireframeLayer = document.getElementById('wireframe-layer');
+    if (!wireframeLayer) return;
+    const zoomProgress = (currentZoom - 1) / 3;
+    wireframeLayer.style.opacity = String(0.12 + zoomProgress * 0.88);
+}
 
 function initMapControls() {
     if(controlsInitialized) return;
@@ -66,8 +90,7 @@ function updateMapTransform() {
     if(mapGrid) {
         mapGrid.style.transform = `scale(${currentZoom}) translate(${panX}%, ${panY}%)`;
         mapGrid.style.transition = isDragging ? 'none' : 'transform 0.3s ease-out';
-        const wfLayer = document.getElementById('wireframe-layer');
-        if(wfLayer) wfLayer.style.opacity = Math.max(0.7, Math.min(1, currentZoom / 1.5));
+        updateBuildingVisibility();
     }
 }
 
@@ -354,12 +377,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- AUTH & SETUP ---
 async function submitLogin() {
     const passwordInput = document.getElementById('terminal-pass');
+    const workerIdInput = document.getElementById('worker-id');
     const errorDisplay = document.getElementById('login-error');
     const pass = passwordInput ? passwordInput.value.trim() : '';
+    const workerId = workerIdInput ? workerIdInput.value.trim() : '';
     if (!pass) {
         if (errorDisplay) {
             errorDisplay.style.color = "var(--pin-danger)";
             errorDisplay.innerText = "ENTER SECURITY KEY";
+        }
+        return;
+    }
+    if (workerIdInput && !workerId) {
+        if (errorDisplay) {
+            errorDisplay.style.color = "var(--pin-danger)";
+            errorDisplay.innerText = "ENTER WORKER ID";
         }
         return;
     }
@@ -371,7 +403,9 @@ async function submitLogin() {
 
     try {
         const res = await fetch('/BACKEND/CODE_PHP/auth.php', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pass })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pass, worker_id: workerId })
         });
         const data = await res.json();
 
@@ -381,6 +415,9 @@ async function submitLogin() {
             if (errorDisplay) {
                 errorDisplay.style.color = "var(--teal)"; 
                 errorDisplay.innerText = data.message;
+            }
+            if (data.role === 'admin') {
+                window.alert('Welcome Dispatcher');
             }
             setTimeout(() => {
                 window.launchApp();
@@ -405,6 +442,7 @@ function switchTab(tabId) {
     document.querySelectorAll('.view-container').forEach(view => view.classList.remove('active'));
     event.target.classList.add('active');
     document.getElementById(`view-${tabId}`).classList.add('active');
+    updateHeroStatsUI();
 }
 
 function startGameLoop() {
@@ -450,8 +488,23 @@ async function executeDispatch() {
     const isVillain = sig.signal_type === 'villain';
     const targetX = (sig.id * 27) % 80 + 10;
     const targetY = (sig.id * 19) % 80 + 10;
+    const dispatchedHeroIds = selectedHeroes.map(String);
+    const dispatchLocation = sig.location || sig.civilian_name || `Incident ${sig.id}`;
 
-    selectedHeroes.forEach((id, index) => {
+    dispatchedHeroIds.forEach(heroId => {
+        const hero = activeState.heroes?.[heroId];
+        if (!hero) return;
+        const acknowledgement = `Copy, Dispatch. I’m responding to ${dispatchLocation}. Standing by for updates.`;
+        const history = loadHeroConversation(heroId);
+        const entry = { role: 'assistant', content: acknowledgement };
+        history.push(entry);
+        saveHeroConversation(heroId, history);
+        if (heroId === activeChatHeroId) {
+            renderHeroChatEntry(document.getElementById('chat-window'), entry, hero.name);
+        }
+    });
+
+    dispatchedHeroIds.forEach((id, index) => {
         const heroWrapper = document.getElementById(`hero-pin-${id}`);
         if(heroWrapper) {
             heroWrapper.style.left = `calc(${targetX}% + ${index === 1 ? 2 : 0}%)`;
@@ -580,24 +633,29 @@ function renderMap() {
     const threatLevel = activeState.threat_level || 0;
     const threatColor = threatLevel > 70 ? 'red' : 'var(--pin-danger)';
     
-    let mapHTML = `<div class="highway-main"></div><div class="highway-cross"></div><div class="rotonda"></div>${staticCityHTML}`;
+    let mapHTML = `<div class="highway-main"><span class="street-name">${streetNames[0]}</span></div><div class="highway-cross"><span class="street-name">${streetNames[1]}</span></div><div class="rotonda"></div>${staticCityHTML}`;
 
     liveSignals.forEach(sig => {
+        const incidentId = String(sig.id ?? '');
+        if (!/^\d+$/.test(incidentId)) return;
         const xPos = (sig.id * 27) % 80 + 10;
         const yPos = (sig.id * 19) % 80 + 10;
-        const isSelected = selectedIncidentId === String(sig.id);
+        const isSelected = selectedIncidentId === incidentId;
         const isVillain = sig.signal_type === 'villain';
         const pinColor = isVillain ? '#fbc02d' : 'var(--pin-danger)';
         const pulseEffect = isSelected ? `box-shadow: 0 0 20px white, 0 0 40px white;` : `box-shadow: 0 0 15px ${pinColor};`;
         const icon = isVillain ? '[THR]' : '[SOS]';
         const typeLabel = isVillain ? 'VILLAIN THREAT' : 'MEDICAL SOS';
+        const safeName = escapeHtml(sig.civilian_name || 'Unknown caller');
+        const safeLocation = escapeHtml(sig.location || 'Location not provided');
+        const safeReceivedAt = escapeHtml(sig.created_at || 'Time unavailable');
 
-        mapHTML += `<div class="emergency-ping live-db-ping" style="left: ${xPos}%; top: ${yPos}%; background: ${pinColor}; ${pulseEffect}" onclick="selectPing('${sig.id}', event)" title="[${typeLabel}] ${sig.civilian_name}"></div>`;
+        mapHTML += `<div class="emergency-ping live-db-ping" style="left: ${xPos}%; top: ${yPos}%; background: ${pinColor}; ${pulseEffect}" onclick="selectPing('${incidentId}', event)" title="[${typeLabel}] ${safeName}"></div>`;
 
         if (isSelected) {
             let aiAdvisoryHTML = '';
             if (sig.requested_heroes) {
-                const reqNames = sig.requested_heroes.split(',').map(id => activeState.heroes[id] ? activeState.heroes[id].name : id).join(' & ');
+                const reqNames = escapeHtml(sig.requested_heroes.split(',').map(id => activeState.heroes[id] ? activeState.heroes[id].name : id).join(' & '));
                 aiAdvisoryHTML = `
                     <div style="background: rgba(30,185,166,0.15); border: 1px dashed var(--teal); padding: 8px; margin-top: 12px; font-size: 10px; color: var(--teal); text-align: left; border-radius: 4px;">
                         <strong style="color:#fff;">🤖 CIVILIAN AI ADVISORY:</strong><br><span style="color:#d0ebe5;">Recommended Response:</span><br><span style="color:#ffeb3b; font-weight:bold; font-size: 12px;">[ ${reqNames} ]</span>
@@ -608,8 +666,10 @@ function renderMap() {
                 <div class="target-block" style="left: ${xPos}%; top: ${yPos}%; width: 60px; height: 60px;">
                     <div class="incident-details" style="min-width: 220px;">
                         <div style="font-size: 2.5rem; margin-bottom:-5px;">${icon}</div>
-                        <div style="color:white; font-size:12px; font-weight:bold; margin-top:10px; border-bottom:1px solid #e29e3e; padding-bottom:5px;">${sig.civilian_name.toUpperCase()}</div>
+                        <div style="color:white; font-size:12px; font-weight:bold; margin-top:10px; border-bottom:1px solid #e29e3e; padding-bottom:5px;">${safeName.toUpperCase()}</div>
                         <div class="req-skill-text" style="margin-top:8px; font-size:10px;">${typeLabel}</div>
+                        <div style="margin-top:8px; font-size:10px; color:#ddd;">LOCATION: ${safeLocation}</div>
+                        <div style="margin-top:5px; font-size:9px; color:#aaa;">RECEIVED: ${safeReceivedAt} // REF: ${incidentId}</div>
                         ${aiAdvisoryHTML}
                     </div>
                 </div>`;
@@ -626,10 +686,21 @@ function renderMap() {
     }
 
     mapGrid.innerHTML = mapHTML;
+    updateBuildingVisibility();
     const threatBarFill = document.getElementById('threat-bar-fill');
     const threatTitleText = document.getElementById('threat-title-text');
     if (threatBarFill) { threatBarFill.style.width = `${threatLevel}%`; threatBarFill.style.background = threatColor; }
     if (threatTitleText) { threatTitleText.innerText = `CITY THREAT LEVEL: ${threatLevel}%`; }
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[char]);
 }
 
 window.selectHeroPin = function(heroId, e) {
@@ -772,11 +843,19 @@ function updateHeroStatsUI() {
     const panel = document.getElementById('hero-stats-panel');
     if (!panel) return;
 
+    const mapView = document.getElementById('view-map');
+    if (!mapView || !mapView.classList.contains('active')) {
+        panel.style.display = 'none';
+        return;
+    }
+
     if (selectedHeroes.length > 0) {
         const heroId = selectedHeroes[0];
         const hero = activeState.heroes ? (activeState.heroes[heroId] || activeState.heroes[String(heroId)]) : null;
         if (hero) {
             panel.style.display = 'flex';
+            const title = document.getElementById('hero-stats-title');
+            if (title) title.innerText = `[ TACTICAL DOSSIER // ${hero.name} ]`;
             renderHeroStats(hero);
             return;
         }
@@ -820,21 +899,75 @@ async function logHeroAction(heroId, heroName, actionType, logMessage) {}
 function updateCommsUI() {
     const inputBox = document.getElementById('chat-input');
     const sendBtn = document.getElementById('chat-btn');
+    const win = document.getElementById('chat-window');
     const getHero = (id) => activeState.heroes ? (activeState.heroes[id] || activeState.heroes[String(id)] || null) : null;
     
-    if (selectedHeroes.length > 0) {
-        const win = document.getElementById('chat-window');
+    if (selectedHeroes.length > 0 && win) {
+        const heroId = String(selectedHeroes[0]);
+        const hero = getHero(heroId);
         const squadNames = selectedHeroes.map(id => getHero(id)?.name || `AGENT-${id}`).join(" & ");
         if (inputBox) { inputBox.disabled = false; inputBox.placeholder = "Type tactical command here..."; }
         if (sendBtn) sendBtn.disabled = false;
-        if (win.innerHTML === '') { win.innerHTML = `<div class="msg sys">SECURE TEAM CHANNEL OPEN: ${squadNames}</div>`; } 
-        else { win.innerHTML += `<div class="msg sys">CHANNEL SWITCHED: ${squadNames}</div>`; }
+        if (activeChatHeroId !== heroId) {
+            activeChatHeroId = heroId;
+            const history = loadHeroConversation(heroId);
+            win.replaceChildren();
+            if (history.length === 0) {
+                const opening = document.createElement('div');
+                opening.className = 'msg sys';
+                opening.textContent = `SECURE TEAM CHANNEL OPEN: ${squadNames}`;
+                win.appendChild(opening);
+            } else {
+                history.forEach(entry => renderHeroChatEntry(win, entry, hero?.name || 'HERO'));
+            }
+        }
         win.scrollTop = win.scrollHeight;
     } else {
-        document.getElementById('chat-window').innerHTML = `<div class="msg sys">SELECT AGENTS TO ESTABLISH LINK</div>`;
+        activeChatHeroId = null;
+        if (win) {
+            win.replaceChildren();
+            const prompt = document.createElement('div');
+            prompt.className = 'msg sys';
+            prompt.textContent = 'SELECT AGENTS TO ESTABLISH LINK';
+            win.appendChild(prompt);
+        }
         if (inputBox) { inputBox.disabled = true; inputBox.placeholder = "Select a hero on the roster first..."; }
         if (sendBtn) sendBtn.disabled = true;
     }
+}
+
+function loadHeroConversation(heroId) {
+    try {
+        const stored = JSON.parse(sessionStorage.getItem(`sdn_hero_chat_${heroId}`) || '[]');
+        if (!Array.isArray(stored)) return [];
+        return stored.filter(entry =>
+            entry && ['user', 'assistant'].includes(entry.role) &&
+            typeof entry.content === 'string' && entry.content.length <= 2000
+        ).slice(-10);
+    } catch (error) {
+        console.warn('Could not load this hero conversation from session storage.', error);
+        return [];
+    }
+}
+
+function saveHeroConversation(heroId, history) {
+    try {
+        sessionStorage.setItem(`sdn_hero_chat_${heroId}`, JSON.stringify(history.slice(-10)));
+    } catch (error) {
+        console.warn('Could not save this hero conversation to session storage.', error);
+    }
+}
+
+function renderHeroChatEntry(container, entry, heroName) {
+    const message = document.createElement('div');
+    message.className = entry.role === 'user' ? 'msg tx' : 'msg rx';
+    if (entry.role === 'assistant') {
+        const label = document.createElement('strong');
+        label.textContent = `[${heroName}]: `;
+        message.appendChild(label);
+    }
+    message.appendChild(document.createTextNode(entry.content));
+    container.appendChild(message);
 }
 
 async function sendChat() {
@@ -843,27 +976,62 @@ async function sendChat() {
     const message = input.value.trim();
     if (!message || selectedHeroes.length === 0) return; 
 
-    const heroId = selectedHeroes[0];
+    const heroId = String(selectedHeroes[0]);
     const hero = activeState.heroes ? (activeState.heroes[heroId] || activeState.heroes[String(heroId)]) : null;
     if (!hero) return;
 
-    win.innerHTML += `<div class="msg tx">${message}</div>`;
+    const history = loadHeroConversation(heroId);
+    const priorHistory = history.slice(-10);
+    history.push({ role: 'user', content: message });
+    saveHeroConversation(heroId, history);
+    renderHeroChatEntry(win, { role: 'user', content: message }, hero.name);
     input.value = ''; win.scrollTop = win.scrollHeight;
 
-    const typingId = 'typing-' + Date.now();
-    win.innerHTML += `<div id="${typingId}" class="msg rx" style="opacity:0.5;">${hero.name} is transmitting...</div>`;
+    const typingMessage = document.createElement('div');
+    typingMessage.className = 'msg rx';
+    typingMessage.style.opacity = '0.5';
+    typingMessage.textContent = `${hero.name} is transmitting...`;
+    win.appendChild(typingMessage);
     win.scrollTop = win.scrollHeight;
 
     try {
-        const res = await fetch('/BACKEND/CODE_PHP/chat.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: message, hero_name: hero.name, hero_skill: hero.skill, active_threats: liveSignals.length }) });
-        const data = await res.json();
-        document.getElementById(typingId)?.remove();
-        if (data.reply) { win.innerHTML += `<div class="msg rx" style="border-left: 3px solid #1eb9a6;"><strong>[${hero.name}]</strong>: ${data.reply}</div>`; } 
-        else { throw new Error("No AI reply"); }
+        const res = await fetch('/BACKEND/CODE_PHP/hero_channel.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message,
+                history: priorHistory,
+                hero_name: hero.name,
+                hero_skill: hero.skill,
+                active_threats: liveSignals.length
+            })
+        });
+        const responseText = await res.text();
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch {
+            console.error('Hero Channel returned a non-JSON response.', {
+                status: res.status,
+                contentType: res.headers.get('content-type')
+            });
+            throw new Error(`Hero Channel endpoint returned a non-JSON response (HTTP ${res.status}). Check that hero_channel.php is uploaded to BACKEND/CODE_PHP and PHP is enabled.`);
+        }
+        typingMessage.remove();
+        if (!res.ok || !data || typeof data.reply !== 'string' || !data.reply.trim()) {
+            throw new Error(data?.error || 'No AI reply was received.');
+        }
+        const assistantEntry = { role: 'assistant', content: data.reply };
+        history.push(assistantEntry);
+        saveHeroConversation(heroId, history);
+        renderHeroChatEntry(win, assistantEntry, hero.name);
         win.scrollTop = win.scrollHeight;
     } catch (err) {
-        document.getElementById(typingId)?.remove();
-        win.innerHTML += `<div class="msg rx" style="border-left: 3px solid #1eb9a6;"><strong>[${hero.name}]</strong>: Message received, Dispatch. Holding position.</div>`;
+        typingMessage.remove();
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'msg sys';
+        errorMessage.textContent = err.message || 'Hero Channel connection failed. Please try again.';
+        win.appendChild(errorMessage);
         win.scrollTop = win.scrollHeight;
     }
 }

@@ -1,3 +1,39 @@
+<?php
+require_once __DIR__ . '/BACKEND/CODE_PHP/session_auth.php';
+require_once __DIR__ . '/BACKEND/CODE_PHP/audit_log.php';
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
+if (!is_director_authenticated()) {
+    write_audit_event('classified_dossier_view', 'anonymous', 'denied', $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    http_response_code(403);
+    header('Content-Type: text/html; charset=UTF-8');
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ACCESS DENIED</title>
+        <style>
+            body { background: #050505; color: #cc0000; font: bold 16px monospace; display: grid; place-content: center; min-height: 100vh; margin: 0; text-align: center; }
+            a { color: #fff; }
+        </style>
+    </head>
+    <body>
+        <main>
+            <p>ACCESS DENIED: DIRECTOR CLEARANCE REQUIRED.</p>
+            <a href="/FRONT-END/DESIGN/admin_panel.html">OPEN DIRECTOR CONSOLE</a>
+        </main>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+write_audit_event('classified_dossier_view', (string) ($_SESSION['worker_id'] ?? 'director'), 'success');
+header('Content-Type: text/html; charset=UTF-8');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

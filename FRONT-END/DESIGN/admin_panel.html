@@ -108,6 +108,7 @@
             padding: 16px 20px 20px; 
             gap: 20px;
             height: calc(100vh - 54px);
+            min-height: 0;
             overflow: hidden;
         }
 
@@ -178,6 +179,8 @@
         /* --- RIGHT: VAULT & ACTIVE ROSTER --- */
         .vault-container { 
             flex: 2.2; 
+            min-width: 0;
+            min-height: 0;
             border: 2px solid rgba(226, 91, 62, 0.6); 
             background: rgba(18, 8, 8, 0.95); 
             padding: 16px; 
@@ -221,14 +224,20 @@
             flex-wrap: wrap;
             justify-content: flex-start;
             align-content: flex-start;
-            margin-bottom: 16px;
+            flex: 1 1 0;
             min-height: 180px;
+            overflow-y: auto;
+            padding: 2px 4px 12px 2px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--danger) #000;
         }
 
         .hero-admin-card {
             border: 1px solid rgba(226,91,62,0.8);
             background: rgba(12, 4, 4, 0.95);
-            width: 320px;
+            flex: 1 1 300px;
+            max-width: 420px;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             border-radius: 4px;
@@ -308,12 +317,14 @@
 
         /* --- DOSSIER CREATOR PANEL --- */
         .creator-panel { 
+            flex: 0 0 auto;
             background: rgba(15, 6, 6, 0.98); 
             border: 2px solid var(--danger); 
             padding: 16px; 
-            margin-top: auto; 
+            margin-top: 12px;
             box-shadow: 0 -8px 25px rgba(0,0,0,0.7); 
             border-radius: 4px;
+            box-sizing: border-box;
         }
         .creator-header {
             display: flex;
@@ -425,6 +436,143 @@
             text-align: center;
             min-height: 16px;
         }
+        @media (max-width: 1050px), (max-height: 700px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                overflow: auto;
+            }
+            #main-dashboard {
+                height: auto;
+                min-height: calc(100vh - 54px);
+                overflow: visible;
+            }
+            .vault-container {
+                min-height: 620px;
+            }
+        }
+        @media (max-width: 800px) {
+            #admin-topbar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+            #admin-topbar > div:first-child {
+                align-items: flex-start !important;
+                flex-direction: column;
+                gap: 10px !important;
+            }
+            .telemetry-strip,
+            .nav-links {
+                flex-wrap: wrap;
+            }
+            #main-dashboard {
+                flex-direction: column;
+                padding: 12px;
+            }
+            .chat-container {
+                flex: 0 0 360px;
+                min-height: 360px;
+            }
+            .vault-container {
+                flex: 0 0 auto;
+                min-height: 700px;
+            }
+            .creator-header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 6px;
+            }
+        }
+        @media (max-width: 520px) {
+            .vault-tabs {
+                flex-direction: column;
+            }
+            .creator-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-strip {
+                justify-content: flex-start;
+            }
+            .button-bar {
+                flex-direction: column;
+            }
+            .hero-admin-card {
+                flex-basis: 100%;
+                max-width: none;
+            }
+        }
+        .account-modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.82);
+        }
+        .account-modal {
+            width: min(900px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px;
+            border: 2px solid var(--admin);
+            border-radius: 4px;
+            background: #0a0a04;
+            box-shadow: 0 0 40px rgba(255, 235, 59, 0.18);
+        }
+        .account-modal-header,
+        .account-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .account-modal-header { justify-content: space-between; }
+        .account-form { flex-wrap: wrap; margin: 16px 0; }
+        .account-form input {
+            flex: 1 1 170px;
+            min-width: 0;
+            padding: 10px;
+            color: #fff;
+            background: #000;
+            border: 1px solid #555;
+            font: inherit;
+        }
+        .account-form button,
+        .account-close,
+        .account-delete {
+            padding: 10px 12px;
+            color: #000;
+            background: var(--admin);
+            border: 0;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .account-delete { color: #fff; background: #631e13; }
+        .account-list,
+        .audit-list { display: grid; gap: 6px; }
+        .account-row,
+        .audit-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 9px;
+            border: 1px solid #292910;
+            background: rgba(0, 0, 0, 0.45);
+            font-size: 11px;
+        }
+        .audit-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 2fr; }
+        #account-manager-status { min-height: 18px; color: var(--danger); font-size: 12px; }
+        @media (max-width: 650px) {
+            .account-modal-overlay { padding: 8px; }
+            .account-modal { max-height: 96vh; padding: 12px; }
+            .audit-row { grid-template-columns: 1fr 1fr; }
+            .account-row { align-items: flex-start; flex-direction: column; }
+        }
     </style>
 </head>
 <body>
@@ -458,10 +606,11 @@
         </div>
 
         <div class="nav-links">
+            <button type="button" class="nav-link" onclick="openWorkerManager()" style="color:#ffeb3b; border-color:#ffeb3b55; background:transparent;">[ ID ] WORKERS / AUDIT</button>
             <a href="index.html" class="nav-link" style="color:#1eb9a6; border-color:#1eb9a655;">[SAT] TERMINAL OS</a>
             <a href="security_center.html" class="nav-link" style="color:#ffeb3b; border-color:#ffeb3b55;">[DEF] SECURITY SOC</a>
             <a href="../../CIVILIAN_CLIENT/index.html" class="nav-link" style="color:#4caf50; border-color:#4caf5055;">[SOS] CIVILIAN SOS</a>
-            <a href="../../classified_data.html" class="nav-link" style="color:#b388ff; border-color:#b388ff55;">[FILE] CLASSIFIED</a>
+            <a href="../../classified_data.php" class="nav-link" style="color:#b388ff; border-color:#b388ff55;">[FILE] CLASSIFIED</a>
         </div>
     </div>
 
@@ -531,16 +680,34 @@
         </div>
     </div>
 
+    <div id="worker-manager-overlay" class="account-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="worker-manager-title">
+        <section class="account-modal">
+            <div class="account-modal-header">
+                <h2 id="worker-manager-title" style="margin:0; color:var(--admin);">WORKER ACCOUNTS & AUDIT LOG</h2>
+                <button type="button" class="account-close" onclick="closeWorkerManager()">CLOSE</button>
+            </div>
+            <p style="color:#aaa; font-size:12px;">Create individual dispatcher credentials. New passwords must be at least 12 characters.</p>
+            <div class="account-form">
+                <input id="account-worker-id" type="text" placeholder="WORKER ID" maxlength="32" autocomplete="off">
+                <input id="account-worker-name" type="text" placeholder="DISPLAY NAME" maxlength="80" autocomplete="off">
+                <input id="account-worker-password" type="password" placeholder="PASSWORD (12+ CHARACTERS)" maxlength="1024" autocomplete="new-password">
+                <button type="button" onclick="createWorkerAccount()">CREATE ACCOUNT</button>
+            </div>
+            <div id="account-manager-status" role="status" aria-live="polite"></div>
+            <h3 style="color:var(--admin); font-size:13px;">DISPATCHER ACCOUNTS</h3>
+            <div id="worker-account-list" class="account-list"></div>
+            <h3 style="color:var(--admin); font-size:13px; margin-top:22px;">RECENT SECURITY EVENTS</h3>
+            <div id="security-audit-list" class="audit-list"></div>
+        </section>
+    </div>
+
     <script>
         let currentVaultTab = 'active'; // 'active' or 'reserves'
         let vaultChartInstances = {};
         let activeHeroesMap = {};
 
-        // In-memory reserves catalogue (pre-seeded with black ops reserves)
-        const classifiedAgents = {
-            "C1": { name: "ECLIPSE", skill: "mental", true_name: "Kaelen Vance", blood_type: "O- Negative", eval: "Clinical empathy suppression. Psionic overload capable.", stats: { combat: 90, defense: 60, agility: 80, comms: 40, intel: 95 } },
-            "C2": { name: "OVERRIDE", skill: "tech", true_name: "Jax Mercer", blood_type: "AB+ Enhanced", eval: "Textbook sociopathy channeled into tactical cyber warfare.", stats: { combat: 85, defense: 85, agility: 70, comms: 90, intel: 85 } }
-        };
+        let classifiedAgents = {};
+        let classifiedAgentsLoaded = false;
 
         // --- AUTHENTICATION ---
         async function authDirector() {
@@ -557,7 +724,7 @@
                 });
                 const data = await res.json();
 
-                if (data.success && (data.role === 'super_admin' || pass === '200828')) {
+                if (data.success && data.role === 'super_admin') {
                     sessionStorage.setItem('sdn_role', 'super_admin');
                     bootDashboard();
                 } else if (data.success && data.role !== 'super_admin') {
@@ -568,14 +735,8 @@
                     err.innerText = data.message || "ACCESS DENIED.";
                 }
             } catch (e) {
-                // Fallback for offline demo
-                if (pass === '200828') {
-                    sessionStorage.setItem('sdn_role', 'super_admin');
-                    bootDashboard();
-                } else {
-                    err.style.color = "var(--danger)";
-                    err.innerText = "UPLINK FAILED.";
-                }
+                err.style.color = "var(--danger)";
+                err.innerText = "UPLINK FAILED.";
             }
         }
 
@@ -781,6 +942,24 @@
             const container = document.getElementById('vault-list');
             if (!container) return;
 
+            if (!classifiedAgentsLoaded) {
+                try {
+                    const reserveResponse = await fetch('/BACKEND/CODE_PHP/get_classified_reserves.php', {
+                        cache: 'no-store',
+                        credentials: 'same-origin'
+                    });
+                    const reserveData = await reserveResponse.json();
+                    if (!reserveResponse.ok || !reserveData.success) {
+                        throw new Error(reserveData.error || 'Director clearance required.');
+                    }
+                    classifiedAgents = reserveData.agents;
+                    classifiedAgentsLoaded = true;
+                } catch (error) {
+                    container.innerHTML = '<div style="color:#e25b3e; padding:30px; text-align:center;">CLASSIFIED RESERVES LOCKED. REAUTHORIZE WITH DIRECTOR CLEARANCE.</div>';
+                    return;
+                }
+            }
+
             // Fetch live heroes from database
             let liveHeroes = {};
             try {
@@ -977,6 +1156,109 @@
                 }
             } catch(e) {
                 alert("TRANSMISSION FAILED: Could not access database.");
+            }
+        }
+
+        function escapeAccountText(value) {
+            return String(value).replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[char]);
+        }
+
+        function openWorkerManager() {
+            document.getElementById('worker-manager-overlay').style.display = 'flex';
+            loadWorkerManager();
+        }
+
+        function closeWorkerManager() {
+            document.getElementById('worker-manager-overlay').style.display = 'none';
+        }
+
+        async function loadWorkerManager() {
+            const status = document.getElementById('account-manager-status');
+            status.style.color = 'var(--admin)';
+            status.innerText = 'LOADING ACCOUNTS AND SECURITY EVENTS...';
+            try {
+                const [accountResponse, auditResponse] = await Promise.all([
+                    fetch('/BACKEND/CODE_PHP/worker_accounts.php', { cache: 'no-store', credentials: 'same-origin' }),
+                    fetch('/BACKEND/CODE_PHP/audit_events.php', { cache: 'no-store', credentials: 'same-origin' })
+                ]);
+                const [accountData, auditData] = await Promise.all([accountResponse.json(), auditResponse.json()]);
+                if (!accountResponse.ok || !accountData.success) throw new Error(accountData.error || 'Could not load worker accounts.');
+                if (!auditResponse.ok || !auditData.success) throw new Error(auditData.error || 'Could not load security events.');
+
+                document.getElementById('worker-account-list').innerHTML = accountData.accounts.map(account => `
+                    <div class="account-row">
+                        <span><strong>${escapeAccountText(account.worker_id)}</strong> — ${escapeAccountText(account.name)}</span>
+                        ${account.legacy ? '<span style="color:#888;">SHARED LEGACY ACCOUNT</span>' : `<button type="button" class="account-delete" onclick="deleteWorkerAccount('${escapeAccountText(account.worker_id)}')">DELETE</button>`}
+                    </div>
+                `).join('') || '<div style="color:#888;">No worker accounts yet.</div>';
+
+                document.getElementById('security-audit-list').innerHTML = auditData.events.map(event => `
+                    <div class="audit-row">
+                        <span>${escapeAccountText(event.timestamp)}</span>
+                        <span>${escapeAccountText(event.action)}</span>
+                        <span>${escapeAccountText(event.actor)} / ${escapeAccountText(event.result)}</span>
+                        <span>${escapeAccountText(event.details || '')}</span>
+                    </div>
+                `).join('') || '<div style="color:#888;">No security events recorded yet.</div>';
+                status.innerText = '';
+            } catch (error) {
+                status.style.color = 'var(--danger)';
+                status.innerText = error.message || 'Could not load account manager.';
+            }
+        }
+
+        async function createWorkerAccount() {
+            const status = document.getElementById('account-manager-status');
+            const workerId = document.getElementById('account-worker-id').value.trim();
+            const name = document.getElementById('account-worker-name').value.trim();
+            const password = document.getElementById('account-worker-password').value;
+            status.style.color = 'var(--admin)';
+            status.innerText = 'CREATING WORKER ACCOUNT...';
+            try {
+                const response = await fetch('/BACKEND/CODE_PHP/worker_accounts.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create', worker_id: workerId, name, password })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Could not create account.');
+                document.getElementById('account-worker-id').value = '';
+                document.getElementById('account-worker-name').value = '';
+                document.getElementById('account-worker-password').value = '';
+                status.style.color = 'var(--green)';
+                status.innerText = 'WORKER ACCOUNT CREATED.';
+                await loadWorkerManager();
+            } catch (error) {
+                status.style.color = 'var(--danger)';
+                status.innerText = error.message || 'Could not create account.';
+            }
+        }
+
+        async function deleteWorkerAccount(workerId) {
+            if (!confirm(`Delete dispatcher account ${workerId}?`)) return;
+            const status = document.getElementById('account-manager-status');
+            try {
+                const response = await fetch('/BACKEND/CODE_PHP/worker_accounts.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', worker_id: workerId })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Could not delete account.');
+                status.style.color = 'var(--green)';
+                status.innerText = 'WORKER ACCOUNT DELETED.';
+                await loadWorkerManager();
+            } catch (error) {
+                status.style.color = 'var(--danger)';
+                status.innerText = error.message || 'Could not delete account.';
             }
         }
     </script>

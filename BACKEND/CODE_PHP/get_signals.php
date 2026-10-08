@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/security_guard.php';
 header('Content-Type: application/json');
 // Prevent browser caching so the map always sees the newest pings
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");

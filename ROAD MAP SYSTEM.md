@@ -38,7 +38,7 @@ BACKEND/QUERY/db.json
 | `FRONT-END/DESIGN/civilian.html` | Additional civilian UI. | Changing this civilian-facing page; confirm its links and API use before editing. |
 | `FRONT-END/DESIGN/security_center.html` | Security center interface. | Changing security monitoring or DEFCON controls. |
 | `FRONT-END/DESIGN/soc_dashboard.html` | SOC dashboard interface. | Changing the security operations dashboard. |
-| `classified_data.html` | Classified hero dossier view. | Changing the classified-data presentation. |
+| `classified_data.php` | Director-session-protected classified hero dossier view. | Changing the classified-data presentation or access control. |
 | `FRONT-END/REQUEST/api_client.js` | Shared browser-side calls for authentication, chat, secure line, and hero deletion. | Changing one of the shared client request helpers or its response handling. |
 | `FRONT-END/REQUEST/weather.js` | Weather widget request/behavior. | Changing weather display or its external API integration. |
 | `BACKEND/CODE_PHP/*.php` | Server-side JSON API, business rules, and PHP helper modules. | Changing validation, authorization, state transitions, or API response shapes. |
@@ -54,7 +54,7 @@ The root `index.php` redirects visitors to `FRONT-END/DESIGN/index.html`. The di
 
 ### Hero management
 
-The compact admin page at `ADMIN_PANEL/index.html` and the full director console at `FRONT-END/DESIGN/admin_panel.html` create and manage heroes. Hero records include an ID, codename, skill, status, stats, and map position. `classified_data.html` reads hero data and displays a dossier, with some dossier details generated in the browser rather than stored by the backend.
+The compact admin page at `ADMIN_PANEL/index.html` and the full director console at `FRONT-END/DESIGN/admin_panel.html` create and manage heroes. Hero records include an ID, codename, skill, status, stats, and map position. `classified_data.php` requires a server-side director session before returning its dossier page. The admin console loads reserve dossier seed data from a director-session-protected endpoint rather than embedding it in public page source.
 
 ### Civilian reports
 
@@ -66,7 +66,7 @@ The dispatch backend handles assigning heroes to incidents and updating incident
 
 ### Chat and communications
 
-`chat.php` accepts a message and optional hero/context data, then returns a JSON `reply`. It can call the Groq chat-completions API when configured and also contains a local reply fallback. `secure_line.php` is used by the shared browser client and director console for secure-line communications.
+`hero_channel.php` (which delegates to `chat.php`) accepts a message and optional hero/context data, including recent conversation history, then returns a JSON `reply`. It calls the Groq chat-completions API when configured and returns an explicit service error when the provider is unavailable rather than substituting a scripted reply. The browser retains recent conversations per hero in session storage. `secure_line.php` is used by the shared browser client and director console for secure-line communications.
 
 ### Security and system controls
 
@@ -86,13 +86,18 @@ All PHP endpoints are in `BACKEND/CODE_PHP/`. The following is a file-purpose ma
 | `send_signal.php`, `get_signals.php`, `clear_signals.php` | Submit, retrieve, and clear civilian signals. |
 | `chat.php`, `chat_admin.php` | Hero chat and admin chat functionality. |
 | `secure_line.php` | Secure-line communications used by shared client helpers and admin UI. |
-| `auth.php` | Authentication request handling. |
+| `auth.php` | Shared authentication for the tactical terminal and director console; dispatcher access requires worker ID `123123` plus the existing dispatcher password. Accepts bounded JSON POST requests and compares passwords with `password_verify()` without running SQL. |
+| `worker_accounts.php`, `worker_account_store.php` | Director-session-only dispatcher account creation, listing, and deletion. Passwords are stored as password hashes in protected `BACKEND/QUERY/worker_accounts.json`. |
+| `auth_throttle.php` | File-backed login throttling: five failures per IP or worker ID in a rolling ten-minute window, stored under protected `BACKEND/QUERY`. |
+| `audit_log.php`, `audit_events.php` | Appends security events to `BACKEND/QUERY/audit.log`; only a director session can retrieve recent events. |
 | `defcon.php` | DEFCON/threat-level controls. |
-| `file_monitor.php`, `waf.php` | Security monitoring and web-application firewall helpers. |
+| `file_monitor.php`, `security_guard.php`, `waf.php` | Security monitoring, system-wide API lockdown enforcement, and request filtering/rate limiting. |
 | `log_action.php` | Action logging. |
 | `generate.php` | Data/content generation endpoint. |
 
 **Important:** endpoint names and caller matches are a starting point, not a substitute for reading the implementation. Check HTTP method, expected JSON fields, validation, response shape, and every caller before changing or adding an endpoint.
+
+All login screens submit to `auth.php`; credentials are checked against password hashes and are never interpolated into SQL. If authentication is later moved to a SQL database, use prepared statements for every credential lookup rather than relying on SQL-keyword filters.
 
 ## 5. Shared data and persistence
 
@@ -131,8 +136,15 @@ Keep changes focused, preserve the existing visual theme and endpoint convention
 
 - Serve the repository from a PHP-capable web server with the repository root as the web root. The pages call root-relative URLs such as `/BACKEND/CODE_PHP/...`; if deployed under a subdirectory, those paths may need configuration or correction.
 - Ensure PHP can read and write `BACKEND/QUERY/db.json`.
+- `BACKEND/QUERY` denies direct web access through its Apache `.htaccess` and IIS `web.config`. For Nginx or another server, configure an equivalent deny rule for this directory; these files do not remove the tracked JSON from source control or protect data returned by API endpoints.
+- Classified dossiers require a PHP session established by director authentication. The director login defaults to the previous credential; set `DIRECTOR_PASSWORD_HASH` on the server to a `password_hash()` result for a strong, unique password to override it. The default is retained for compatibility and should be changed before public deployment. Serve the site over HTTPS so the session cookie is protected in transit.
+- Create named dispatcher accounts from the director console's Worker Accounts & Audit panel. New passwords must be at least 12 characters; account hashes, login-throttle state, and the audit log are stored under `BACKEND/QUERY`, which must be writable by PHP and denied by the web server. The legacy shared dispatcher ID `123123` remains enabled for compatibility.
+- Login attempts are limited to five failures per client IP or worker ID within ten minutes. The director console can view recent audit events, including authentication, account changes, classified-data access, dispatch actions, and DEFCON changes. Protect and back up audit data as operational records.
+- Configure `SENTINEL_OVERRIDE_CODE` in the PHP server environment. The Sentinel page uses it to activate or restore DEFCON-1; do not put the value in source control.
+- `security_guard.php` is included by the API endpoints. During DEFCON-1 it rejects API writes while preserving selected read-only status/monitoring endpoints. This does not block static website access or protect the web server/host itself.
 - Weather display uses the external Open-Meteo API through `FRONT-END/REQUEST/weather.js`.
-- Chat's external provider integration requires cURL and a Groq API key supplied by the server environment as `GROQ_API_KEY`. Do not put API keys in browser code or commit them to the repository.
+- Chat's external provider integration requires cURL and a Groq API key. Prefer the server environment variable `GROQ_API_KEY`; on InfinityFree, where environment variables may not be available, store a PHP file at `BACKEND/QUERY/groq_config.php` that returns the key as a string. This directory is denied by the included Apache/IIS rules. Never put a key in browser code, a public page, or a committed file.
+- Review the Apache/IIS deny rules in `BACKEND/QUERY` and configure an equivalent deny rule for the production web server. Before public deployment, verify that direct requests for `db.json`, `worker_accounts.json`, `login_attempts.json`, and `audit.log` are denied; local checks do not verify the production host or proxy configuration.
 - The project does not show a package manifest or automated test suite at the repository root. Before adding tools or dependencies, check whether the task truly needs them.
 
 ## 8. Priority checks for the next coding AI

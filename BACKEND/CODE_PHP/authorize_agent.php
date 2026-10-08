@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/security_guard.php';
 // Activate the Global Web Application Firewall (WAF)
 require_once __DIR__ . '/waf.php';
 require_once __DIR__ . '/db.php';

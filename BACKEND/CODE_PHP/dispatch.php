@@ -1,4 +1,8 @@
 <?php
+require_once __DIR__ . '/session_auth.php';
+start_sdn_session();
+require_once __DIR__ . '/security_guard.php';
+require_once __DIR__ . '/audit_log.php';
 header('Content-Type: application/json');
 require_once __DIR__ . '/db.php';
 
@@ -46,5 +50,9 @@ $db = modify_db(function(&$db) use ($action, $incident_id, $hero_ids, &$result_s
     return $db;
 });
 
+if ($result_status !== 'error') {
+    $actor = (string) ($_SESSION['worker_id'] ?? 'dispatcher');
+    write_audit_event('dispatch_' . $action, $actor, $result_status, 'incident=' . (string) $incident_id);
+}
 echo json_encode(["result" => $result_status, "state" => $db]);
 ?>

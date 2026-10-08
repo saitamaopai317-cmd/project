@@ -33,6 +33,7 @@
         .btn-defcon:hover { background: white; color: var(--danger); }
         
         .btn-restore { width: 100%; background: var(--teal); color: black; border: none; padding: 15px; font-weight: bold; font-family: inherit; font-size: 1rem; cursor: pointer; margin-top: 10px; display: none; }
+        #defcon-message { min-height: 2.5em; margin-top: 12px; font-size: 0.8rem; line-height: 1.4; color: #ffeb3b; }
     </style>
 </head>
 <body>
@@ -44,7 +45,7 @@
                 <a href="index.html" style="color:#1eb9a6; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #1eb9a655; padding:3px 8px; border-radius:3px;">[SAT] TERMINAL OS</a>
                 <a href="admin_panel.html" style="color:#ffeb3b; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #ffeb3b55; padding:3px 8px; border-radius:3px;">[HQ] ADMIN PANEL</a>
                 <a href="../../CIVILIAN_CLIENT/index.html" style="color:#4caf50; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #4caf5055; padding:3px 8px; border-radius:3px;">[SOS] CIVILIAN SOS</a>
-                <a href="../../classified_data.html" style="color:#b388ff; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #b388ff55; padding:3px 8px; border-radius:3px;">[FILE] CLASSIFIED</a>
+                <a href="../../classified_data.php" style="color:#b388ff; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #b388ff55; padding:3px 8px; border-radius:3px;">[FILE] CLASSIFIED</a>
             </div>
         </div>
         <div id="global-status">SYSTEM SECURE</div>
@@ -65,14 +66,15 @@
             <div class="threat-icon" id="threat-icon">[DEF]</div>
             <h2 style="color: var(--danger); margin: 0; letter-spacing: 2px;">WAF MANUAL OVERRIDE</h2>
             <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 30px; max-width: 80%;">
-                Initiating DEFCON-1 will deploy the <strong>defcon.state</strong> lockfile. 
-                The Web Application Firewall will intercept and block all inbound database traffic immediately.
+                DEFCON-1 blocks write and action requests across the PHP API while keeping read-only monitoring available.
+                Configure <strong>SENTINEL_OVERRIDE_CODE</strong> in the server environment to authorize lock and restore.
             </p>
 
             <div class="auth-box">
                 <input type="password" id="defcon-code" placeholder="ENTER OVERRIDE CODE" autocomplete="off">
                 <button class="btn-defcon" id="btn-lock" onclick="triggerDefcon('lock')">INITIATE DEFCON-1</button>
                 <button class="btn-restore" id="btn-unlock" onclick="triggerDefcon('unlock')">RESTORE NETWORK ACCESS</button>
+                <div id="defcon-message" role="status" aria-live="polite"></div>
             </div>
         </div>
 
@@ -132,27 +134,52 @@
                         icon.innerText = "[DEF]";
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                const globalStatus = document.getElementById('global-status');
+                globalStatus.innerText = "MONITOR UNAVAILABLE: CHECK SERVER";
+                globalStatus.style.color = "var(--danger)";
+                globalStatus.style.borderColor = "var(--danger)";
+            }
         }
 
         // --- WAF LOCKDOWN LOGIC ---
         async function triggerDefcon(action) {
-            const code = document.getElementById('defcon-code').value;
-            if (!code) return;
+            const codeInput = document.getElementById('defcon-code');
+            const message = document.getElementById('defcon-message');
+            const code = codeInput.value.trim();
+            if (!code) {
+                message.innerText = "Enter the Sentinel override code configured on the PHP server.";
+                message.style.color = "var(--warn)";
+                codeInput.focus();
+                return;
+            }
+
+            message.innerText = "CONTACTING SENTINEL API...";
+            message.style.color = "var(--teal)";
 
             try {
                 const res = await fetch('/BACKEND/CODE_PHP/defcon.php', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code: code, action: action })
                 });
-                const data = await res.json();
-                
-                if (!data.success) {
-                    alert("AUTHORIZATION FAILED: " + data.error);
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.success) {
+                    message.innerText = data.error || `Sentinel request failed (HTTP ${res.status}).`;
+                    message.style.color = "var(--danger)";
+                    return;
                 }
-                document.getElementById('defcon-code').value = '';
-                scanFiles(); // Instantly update the UI
-            } catch(e) {}
+
+                message.innerText = data.status === "LOCKED"
+                    ? "DEFCON-1 ACTIVE: API write/action requests are blocked."
+                    : "Lockdown removed. API access restored.";
+                message.style.color = data.status === "LOCKED" ? "var(--danger)" : "var(--teal)";
+                codeInput.value = '';
+                await scanFiles();
+            } catch(error) {
+                message.innerText = "Sentinel API unreachable. Confirm PHP server is running and the endpoint path is correct.";
+                message.style.color = "var(--danger)";
+            }
         }
 
         // Keep scanning the server every 2 seconds

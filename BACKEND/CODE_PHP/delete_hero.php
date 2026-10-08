@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/security_guard.php';
 // Secure this endpoint with the WAF!
 require_once 'waf.php'; 
 header('Content-Type: application/json');

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/security_guard.php';
 // Hide PHP warnings so they don't break our JSON feed!
 error_reporting(0);
 header('Cache-Control: no-store, no-cache');
