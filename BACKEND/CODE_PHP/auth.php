@@ -30,10 +30,9 @@ foreach ($threat_signatures as $pattern) {
 $request = json_decode($raw_input, true);
 $input_password = $request['password'] ?? '';
 
-// 🔒 PASTE YOUR GENERATED BCRYPT HASHES HERE
-// The plaintext passwords '200727' and '200828' no longer exist in this file.
-$hash_dispatcher = '$2y$12$5rXAk3jETnAPXgvvPItmGuJzIOC8U6yG46YKokD9cH4hgbbmejsyi';
-$hash_director   = '$2y$12$PKL2wmUYhCrCp5gBWEeVuuWqXFJMs2bXcj0FZpuiRQQwssNfyRLZO';
+// Stored bcrypt hashes for the authorized access codes.
+$hash_dispatcher = '$2y$12$lkh2lKo4kg0FusJv1L9ubusK7gVnR96/uvqEr16dJ1bU7q.9hTZ.m';
+$hash_director   = '$2y$12$My7D/nk4is/vkT7gBzR3r.b2pHWo05tEsIs3sWiiFDiroW6vNsVfu';
 
 $token = bin2hex(random_bytes(16));
 
