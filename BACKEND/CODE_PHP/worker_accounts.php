@@ -58,17 +58,23 @@ try {
     if ($action === 'create') {
         $name = $request['name'] ?? '';
         $password = $request['password'] ?? '';
-        if (!is_string($name) || trim($name) === '' || strlen($name) > 80 ||
-            !is_string($password) || strlen($password) < 12 || strlen($password) > 1024) {
+        $trimmedName = is_string($name) ? trim($name) : '';
+        $nameLength = is_string($name) ? preg_match_all('/./us', $trimmedName) : false;
+        if ($nameLength === false || $nameLength < 4 || $nameLength > 80) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Enter a name (up to 80 characters) and a password of at least 12 characters.']);
+            echo json_encode(['success' => false, 'error' => 'Display name must be 4 to 80 characters.']);
+            exit;
+        }
+        if (!is_string($password) || strlen($password) < 12 || strlen($password) > 1024) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Password must be 12 to 1024 characters.']);
             exit;
         }
 
-        $created = update_worker_accounts(static function (&$accounts) use ($workerId, $name, $password) {
+        $created = update_worker_accounts(static function (&$accounts) use ($workerId, $trimmedName, $password) {
             if (isset($accounts[$workerId])) return false;
             $accounts[$workerId] = [
-                'name' => trim($name),
+                'name' => $trimmedName,
                 'password_hash' => password_hash($password, PASSWORD_DEFAULT),
                 'created_at' => gmdate('c')
             ];

@@ -689,7 +689,7 @@
             <p style="color:#aaa; font-size:12px;">Create individual dispatcher credentials. New passwords must be at least 12 characters.</p>
             <div class="account-form">
                 <input id="account-worker-id" type="text" placeholder="WORKER ID" maxlength="32" autocomplete="off">
-                <input id="account-worker-name" type="text" placeholder="DISPLAY NAME" maxlength="80" autocomplete="off">
+                <input id="account-worker-name" type="text" placeholder="DISPLAY NAME" minlength="4" maxlength="80" autocomplete="off">
                 <input id="account-worker-password" type="password" placeholder="PASSWORD (12+ CHARACTERS)" maxlength="1024" autocomplete="new-password">
                 <button type="button" onclick="createWorkerAccount()">CREATE ACCOUNT</button>
             </div>
@@ -1218,6 +1218,12 @@
             const workerId = document.getElementById('account-worker-id').value.trim();
             const name = document.getElementById('account-worker-name').value.trim();
             const password = document.getElementById('account-worker-password').value;
+            const nameLength = Array.from(name).length;
+            if (nameLength < 4 || nameLength > 80) {
+                status.style.color = 'var(--danger)';
+                status.innerText = 'DISPLAY NAME MUST BE 4 TO 80 CHARACTERS.';
+                return;
+            }
             status.style.color = 'var(--admin)';
             status.innerText = 'CREATING WORKER ACCOUNT...';
             try {
