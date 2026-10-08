@@ -322,16 +322,16 @@ window.launchApp = function() {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // If authenticated in this session or query bypass requested, auto-boot into radar
-    const urlParams = new URLSearchParams(window.location.search);
-    if (sessionStorage.getItem('sdn_token') || urlParams.get('bypass') === '1') {
+    // Restore the app only for a session that was authenticated successfully.
+    if (sessionStorage.getItem('sdn_token')) {
         window.launchApp();
     }
 
-    const passInput = document.getElementById('terminal-pass');
-    if (passInput) {
-        passInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') submitLogin();
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitLogin();
         });
     }
 
@@ -355,7 +355,15 @@ document.addEventListener('DOMContentLoaded', () => {
 async function submitLogin() {
     const passwordInput = document.getElementById('terminal-pass');
     const errorDisplay = document.getElementById('login-error');
-    const pass = (passwordInput && passwordInput.value.trim()) ? passwordInput.value.trim() : '200727';
+    const pass = passwordInput ? passwordInput.value.trim() : '';
+    if (!pass) {
+        if (errorDisplay) {
+            errorDisplay.style.color = "var(--pin-danger)";
+            errorDisplay.innerText = "ENTER SECURITY KEY";
+        }
+        return;
+    }
+
     if (errorDisplay) {
         errorDisplay.style.color = "var(--teal)";
         errorDisplay.innerText = "AUTHENTICATING...";
@@ -380,11 +388,15 @@ async function submitLogin() {
         } else {
             if (errorDisplay) {
                 errorDisplay.style.color = "var(--pin-danger)"; 
-                errorDisplay.innerHTML = `${data.message} &nbsp; <a href="javascript:void(0)" onclick="window.launchApp()" style="color:#ffeb3b; text-decoration:underline;">[BYPASS OVERRIDE]</a>`;
+                errorDisplay.innerText = data.message || "ACCESS DENIED";
             }
         }
     } catch (err) {
-        window.launchApp();
+        console.error("Authentication request failed:", err);
+        if (errorDisplay) {
+            errorDisplay.style.color = "var(--pin-danger)";
+            errorDisplay.innerText = "AUTHENTICATION SERVICE UNAVAILABLE";
+        }
     }
 }
 
@@ -425,12 +437,15 @@ function checkGameOver() {
 // --- DYNAMIC DISPATCH LOGIC ---
 async function executeDispatch() {
     if (selectedHeroes.length === 0 || !selectedIncidentId || isAnimating) return;
-    
-    isAnimating = true; 
-    document.getElementById('action-bar').style.display = 'none';
-    
+
     const sig = liveSignals.find(s => String(s.id) === selectedIncidentId);
-    if (!sig) { isAnimating = false; return; }
+    if (!sig || isRainBlockedSquad()) {
+        validateAction();
+        return;
+    }
+
+    isAnimating = true;
+    document.getElementById('action-bar').style.display = 'none';
     
     const isVillain = sig.signal_type === 'villain';
     const targetX = (sig.id * 27) % 80 + 10;
@@ -709,6 +724,19 @@ function validateAction() {
         if (allAvailable && sig) {
             bar.style.display = 'flex';
             const squadNames = selectedHeroes.map(id => getHero(id)?.name || `AGENT-${id}`).join(" & ");
+            if (isRainBlockedSquad()) {
+                textNode.innerText = `RAIN LOCKOUT: ${squadNames} cannot deploy while rain or storms are active.`;
+                textNode.style.color = "#9ecbff";
+                if (btn) {
+                    btn.style.display = 'block';
+                    btn.disabled = true;
+                    btn.style.opacity = "0.5";
+                    btn.style.cursor = "not-allowed";
+                }
+                decomBtn.style.display = 'block';
+                return;
+            }
+
             const typeLabel = sig.signal_type === 'villain' ? 'NEUTRALIZE' : 'SECURE';
             const reqArray = (sig.requested_heroes || '').split(',').map(s => s.trim()).filter(Boolean).sort();
             const curArray = selectedHeroes.slice().map(String).sort();
@@ -727,6 +755,16 @@ function validateAction() {
     } else { 
         bar.style.display = 'none'; 
     }
+}
+
+function isRainBlockedSquad() {
+    if (!window.isRaining) return false;
+    return selectedHeroes.some(id => {
+        const hero = activeState.heroes ? (activeState.heroes[id] || activeState.heroes[String(id)]) : null;
+        const skill = String(hero?.skill || '').toLowerCase();
+        const name = String(hero?.name || '').toUpperCase();
+        return skill === 'elemental' || name === 'FLAMBAE';
+    });
 }
 
 // --- HERO STATS RADAR & LOGS ---
@@ -833,7 +871,7 @@ async function sendChat() {
 // --- ADMIN ↔ DISPATCHER LIVE CHAT LOGIC ---
 async function fetchDispatchChat() {
     try {
-        const res = await fetch('/BACKEND/CODE_PHP/chat_admin.php');
+        const res = await fetch('/BACKEND/CODE_PHP/secure_line.php');
         const data = await res.json();
         if (data.success) {
             const win = document.getElementById('dispatch-chat-window');
@@ -858,15 +896,30 @@ async function sendDispatchChat() {
     const input = document.getElementById('dispatch-chat-input');
     const message = input.value.trim();
     if (!message) return;
-    input.value = '';
-    
+    const button = document.getElementById('dispatch-chat-send');
+    const status = document.getElementById('dispatch-chat-status');
+    button.disabled = true;
+    status.innerText = 'TRANSMITTING...';
+    status.style.color = 'var(--teal)';
     try {
-        await fetch('/BACKEND/CODE_PHP/chat_admin.php', {
+        const res = await fetch('/BACKEND/CODE_PHP/secure_line.php', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sender: 'DISPATCHER', message: message })
         });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || `Server returned HTTP ${res.status}`);
+        }
+        input.value = '';
+        status.innerText = 'MESSAGE SENT.';
         fetchDispatchChat();
-    } catch(e){}
+    } catch(e) {
+        console.error('Dispatcher message could not be sent:', e);
+        status.innerText = 'MESSAGE NOT SENT. CHECK THE CONNECTION AND TRY AGAIN.';
+        status.style.color = 'var(--pin-danger)';
+    } finally {
+        button.disabled = false;
+    }
 }
 
 // --- HERO DECOMMISSION (DELETE) LOGIC ---

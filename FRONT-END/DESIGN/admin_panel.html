@@ -475,8 +475,9 @@
             </div>
             <div class="chat-input-wrapper">
                 <input type="text" id="admin-chat-input" placeholder="Type message to Dispatcher here...">
-                <button onclick="sendAdminChat()">TRANSMIT</button>
+                <button id="admin-chat-send" onclick="sendAdminChat()">TRANSMIT</button>
             </div>
+            <div id="admin-chat-status" role="status" aria-live="polite" style="min-height: 1em; padding: 4px 8px; color: var(--danger); font-size: 0.75rem;"></div>
         </div>
 
         <!-- RIGHT: HERO VAULT & ACTIVE ASSETS -->
@@ -615,7 +616,7 @@
         // --- CHAT LOGIC ---
         async function fetchAdminChat() {
             try {
-                const res = await fetch('/BACKEND/CODE_PHP/chat_admin.php?t=' + Date.now());
+                const res = await fetch('/BACKEND/CODE_PHP/secure_line.php?t=' + Date.now());
                 const data = await res.json();
                 if (data.success) {
                     const win = document.getElementById('admin-chat-window');
@@ -636,13 +637,31 @@
             const input = document.getElementById('admin-chat-input');
             const message = input.value.trim();
             if (!message) return;
-            input.value = '';
-            await fetch('/BACKEND/CODE_PHP/chat_admin.php', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ sender: 'DIRECTOR', message: message }) 
-            });
-            fetchAdminChat();
+            const button = document.getElementById('admin-chat-send');
+            const status = document.getElementById('admin-chat-status');
+            button.disabled = true;
+            status.innerText = 'TRANSMITTING...';
+            status.style.color = 'var(--admin)';
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/secure_line.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sender: 'DIRECTOR', message: message })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || `Server returned HTTP ${res.status}`);
+                }
+                input.value = '';
+                status.innerText = 'MESSAGE SENT.';
+                fetchAdminChat();
+            } catch (e) {
+                console.error('Director message could not be sent:', e);
+                status.innerText = 'MESSAGE NOT SENT. CHECK THE CONNECTION AND TRY AGAIN.';
+                status.style.color = 'var(--danger)';
+            } finally {
+                button.disabled = false;
+            }
         }
 
         document.getElementById('admin-chat-input').addEventListener('keypress', function (e) {

@@ -56,6 +56,7 @@ async function fetchWeather() {
     } catch(e) {
         console.warn("Weather API offline, using fallback tactical feed.", e);
         // Fallback data so the UI never breaks on stage if the network drops
+        window.isRaining = false;
         window.weatherTemp = "28";
         window.weatherDesc = "SECTOR CLEAR";
         window.weatherIcon = "[SAT]";
@@ -68,10 +69,20 @@ async function fetchWeather() {
         if (typeof validateAction === 'function') {
             validateAction();
         }
+        const fx = document.getElementById("weather-fx");
+        if (fx) {
+            fx.className = "weather-overlay " + window.weatherOverlayClass;
+        }
         // Update the widget text directly on screen if it exists
         const widget = document.getElementById("weather-widget");
         if (widget) {
-            widget.innerHTML = `${window.weatherIcon} ${window.weatherTemp}°C - ${window.weatherDesc}`;
+            const readout = document.getElementById("weather-readout");
+            const text = `${window.weatherIcon} ${window.weatherTemp}°C - ${window.weatherDesc}`;
+            if (readout) {
+                readout.textContent = text;
+            } else {
+                widget.innerHTML = text;
+            }
         }
     }
 }
@@ -102,7 +113,13 @@ function toggleTestWeather() {
     // Update widget text for test modes
     const widget = document.getElementById("weather-widget");
     if (widget) {
-        widget.innerHTML = `${window.weatherIcon} --°C - ${window.weatherDesc}`;
+        const readout = document.getElementById("weather-readout");
+        const text = `${window.weatherIcon} --°C - ${window.weatherDesc}`;
+        if (readout) {
+            readout.textContent = text;
+        } else {
+            widget.innerHTML = text;
+        }
     }
 
     // Toggle the actual CSS weather overlay element on the map

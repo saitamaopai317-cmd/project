@@ -38,6 +38,16 @@
         .threat-bar { width: 100%; height: 15px; background: #222; position: relative; }
         .threat-fill { height: 100%; background: var(--pin-danger); width: 0%; transition: width 0.5s; }
         .weather-widget { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.8); border: 1px solid var(--map-grid); color: var(--map-grid); padding: 5px 15px; font-size: 0.75rem; z-index: 1000; border-radius: 4px; font-weight:bold; }
+        .weather-overlay { position: absolute; inset: 0; display: none; pointer-events: none; z-index: 70; }
+        .weather-overlay.active { display: block; }
+        .weather-clouds { background: rgba(80, 100, 115, 0.12); }
+        .weather-rain { background: repeating-linear-gradient(110deg, transparent 0 18px, rgba(190, 220, 255, 0.24) 19px 20px, transparent 21px 34px); animation: rain-fall 0.35s linear infinite; }
+        .weather-storm { background: repeating-linear-gradient(110deg, transparent 0 16px, rgba(190, 220, 255, 0.3) 17px 19px, transparent 20px 30px); animation: rain-fall 0.2s linear infinite, storm-flash 4s steps(1, end) infinite; }
+        .weather-sunny { background: rgba(255, 210, 90, 0.04); }
+        @keyframes rain-fall { from { background-position: 0 0; } to { background-position: -40px 90px; } }
+        @keyframes storm-flash { 0%, 94%, 100% { background-color: transparent; } 95% { background-color: rgba(210, 225, 255, 0.2); } 97% { background-color: transparent; } }
+        .weather-widget button { margin-left: 10px; background: transparent; border: 1px solid var(--map-grid); color: inherit; font: inherit; cursor: pointer; }
+        .weather-widget button:hover { background: var(--map-grid); color: #000; }
         .game-over-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 4rem; font-weight: bold; z-index: 2000; display: none; text-shadow: 0 0 20px black; white-space: nowrap; }
         /* --- LEFT PORTAL DOCK & COLLAPSIBLE HUD --- */
         .side-menu { 
@@ -301,12 +311,11 @@
         <div id="login-screen">
             <div class="login-box">
                 <h2>SDN MAINFRAME</h2>
-                <input type="password" id="terminal-pass" placeholder="ENTER SECURITY KEY">
-                <br>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
-                    <button onclick="submitLogin()">INITIALIZE UPLINK</button>
-                    <button onclick="launchApp()" style="background:#ffeb3b; color:#000;">[ DIRECT RADAR ]</button>
-                </div>
+                <form id="login-form">
+                    <input type="password" id="terminal-pass" placeholder="ENTER SECURITY KEY" autocomplete="current-password" required>
+                    <br>
+                    <button type="submit" style="margin-top: 10px;">INITIALIZE UPLINK</button>
+                </form>
                 <div id="login-error" style="color:var(--pin-danger); font-size:0.75rem; margin-top:10px; height:15px; font-weight:bold;"></div>
             </div>
 
@@ -351,6 +360,11 @@
                 
                 <div class="map-viewport">
                     <div class="tactical-map" id="map-grid"></div>
+                    <div id="weather-fx" class="weather-overlay" aria-hidden="true"></div>
+                    <div id="weather-widget" class="weather-widget" role="status" aria-live="polite">
+                        <span id="weather-readout">[SAT] --°C - CONNECTING...</span>
+                        <button type="button" onclick="toggleTestWeather()" title="Cycle clear, clouds, rain, storm, then live weather">WEATHER TEST</button>
+                    </div>
                     <div class="city-label">SECTOR: SAN FRANZ</div>
                     <button class="btn-unzoom" id="btn-unzoom" onclick="zoomOut()">[ RETRACT SENSORS ]</button>
 
@@ -388,8 +402,9 @@
                         <div class="chat-window" id="dispatch-chat-window" style="background:#0a0a05;"></div>
                         <div class="chat-input" style="border-top-color: #ffeb3b;">
                             <input type="text" id="dispatch-chat-input" placeholder="Message High Command...">
-                            <button onclick="sendDispatchChat()" style="background:#ffeb3b;">SEND</button>
+                            <button id="dispatch-chat-send" onclick="sendDispatchChat()" style="background:#ffeb3b;">SEND</button>
                         </div>
+                        <div id="dispatch-chat-status" role="status" aria-live="polite" style="min-height: 1em; padding: 4px 8px; color: var(--pin-danger); font-size: 0.75rem;"></div>
                     </div>
 
                 </div>
@@ -538,6 +553,7 @@
             } catch(e) {}
         });
     </script>
-    <script src="../REQUEST/api_client.js?v=999"></script>
+    <script src="../REQUEST/weather.js?v=1001"></script>
+    <script src="../REQUEST/api_client.js?v=1001"></script>
 </body>
 </html>

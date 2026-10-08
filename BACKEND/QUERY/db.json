@@ -55,6 +55,24 @@
             "sender": "DISPATCHER",
             "message": "heyy",
             "created_at": "2026-10-07 18:25:42"
+        },
+        {
+            "id": 5,
+            "sender": "DISPATCHER",
+            "message": "hellow",
+            "created_at": "2026-10-08 05:13:55"
+        },
+        {
+            "id": 6,
+            "sender": "DIRECTOR",
+            "message": "hey",
+            "created_at": "2026-10-08 05:23:44"
+        },
+        {
+            "id": 7,
+            "sender": "DISPATCHER",
+            "message": "22222222",
+            "created_at": "2026-10-08 05:27:40"
         }
     ],
     "incidents": {
@@ -146,6 +164,11 @@
         }
     ],
     "next_hero_id": 11,
+<<<<<<< HEAD
     "next_signal_id": 24,
     "next_comm_id": 5
+=======
+    "next_signal_id": 25,
+    "next_comm_id": 8
+>>>>>>> 6847038 (Added secure_line, roadmap, and updated backend/frontend scripts)
 }
