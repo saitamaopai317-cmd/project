@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SDN // SECURITY OPERATIONS CENTER</title>
+    <style>
+        body { background: #020000; color: #ff3333; font-family: 'Courier New', monospace; margin: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; user-select: none; }
+        .dashboard { border: 2px solid #ff3333; padding: 40px; text-align: center; background: rgba(20,0,0,0.9); box-shadow: 0 0 40px rgba(255,51,51,0.2); width: 400px; }
+        h1 { margin: 0 0 10px 0; letter-spacing: 5px; }
+        .status-box { font-size: 24px; font-weight: bold; padding: 20px; border: 2px dashed #ff3333; margin: 20px 0; letter-spacing: 2px; }
+        input { background: #000; border: 1px solid #ff3333; color: white; padding: 15px; width: 100%; box-sizing: border-box; text-align: center; font-size: 16px; margin-bottom: 20px; outline: none; }
+        input:focus { box-shadow: 0 0 15px rgba(255,51,51,0.5); }
+        .btn { width: 100%; padding: 20px; font-weight: bold; font-size: 18px; cursor: pointer; border: none; font-family: inherit; transition: 0.2s; margin-bottom: 10px; }
+        .btn-lock { background: #ff3333; color: black; }
+        .btn-lock:hover { background: white; color: red; }
+        .btn-restore { background: #1eb9a6; color: black; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <h1>SENTINEL SOC</h1>
+        <div style="color:#aaa; font-size:12px;">GLOBAL WAF & DATABASE INTEGRITY MONITOR</div>
+        
+        <div class="status-box" id="sys-status" style="color:#1eb9a6; border-color:#1eb9a6;">SYSTEM SECURE</div>
+
+        <input type="password" id="auth-code" placeholder="ENTER OVERRIDE CODE">
+        
+        <button class="btn btn-lock" onclick="triggerDefcon('lock')">INITIATE DEFCON-1 LOCKDOWN</button>
+        <button class="btn btn-restore" onclick="triggerDefcon('unlock')">RESTORE DATABASE ACCESS</button>
+    </div>
+
+    <script>
+        async function triggerDefcon(action) {
+            const code = document.getElementById('auth-code').value;
+            const statusBox = document.getElementById('sys-status');
+            
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/defcon.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, action: action })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    if (data.status === 'LOCKED') {
+                        statusBox.innerText = 'DEFCON-1 ACTIVE';
+                        statusBox.style.color = '#ff3333';
+                        statusBox.style.borderColor = '#ff3333';
+                    } else {
+                        statusBox.innerText = 'SYSTEM SECURE';
+                        statusBox.style.color = '#1eb9a6';
+                        statusBox.style.borderColor = '#1eb9a6';
+                    }
+                    document.getElementById('auth-code').value = '';
+                } else {
+                    alert("ACCESS DENIED: " + data.error);
+                }
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>

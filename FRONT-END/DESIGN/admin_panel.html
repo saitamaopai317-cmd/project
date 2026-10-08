@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDN // HIGH COMMAND ADMIN</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { 
+            --teal: #1eb9a6; 
+            --danger: #e25b3e; 
+            --admin: #ffeb3b; 
+            --green: #00e676;
+            --bg-dark: #050505;
+            --panel-bg: #0c0c08;
+        }
+        body { 
+            background: var(--bg-dark); 
+            color: #e6dfd1; 
+            font-family: 'Courier New', monospace; 
+            margin: 0; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            user-select: none;
+        }
+        
+        /* --- DIRECTOR LOGIN SCREEN --- */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #020202; z-index: 9999; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        .login-box {
+            border: 2px solid var(--admin); padding: 50px; text-align: center;
+            background: rgba(10, 10, 0, 0.95); box-shadow: 0 0 50px rgba(255,235,59,0.15);
+            width: 420px; box-sizing: border-box;
+        }
+        .login-box h1 { color: var(--admin); letter-spacing: 5px; margin-top: 0; font-size: 1.5rem; text-shadow: 0 0 10px rgba(255,235,59,0.5); }
+        .login-box p { color: #888; font-size: 0.8rem; margin-bottom: 25px; letter-spacing: 1px; }
+        .login-box input {
+            width: 100%; background: #000; border: 1px solid var(--admin); color: white;
+            padding: 15px; margin-bottom: 20px; box-sizing: border-box; text-align: center;
+            font-family: inherit; font-size: 1.1rem; outline: none; font-weight: bold;
+        }
+        .login-box input:focus { box-shadow: 0 0 15px rgba(255,235,59,0.3); }
+        .login-box button {
+            width: 100%; background: var(--admin); color: black; border: none;
+            padding: 15px; font-weight: bold; cursor: pointer; font-family: inherit; font-size: 1.1rem;
+            letter-spacing: 2px; transition: 0.2s;
+        }
+        .login-box button:hover { background: white; }
+        #login-error { color: var(--danger); font-size: 0.85rem; margin-top: 15px; height: 15px; font-weight: bold; }
+
+        /* --- TOP TELEMETRY NAVBAR --- */
+        #admin-topbar {
+            display: none; 
+            width: 100%; 
+            box-sizing: border-box; 
+            background: #0a0a04; 
+            border-bottom: 2px solid var(--admin); 
+            padding: 10px 24px; 
+            justify-content: space-between; 
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        .telemetry-strip {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .tele-tag {
+            padding: 4px 10px;
+            border-radius: 3px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tele-sync { color: var(--green); border-color: var(--green); }
+        .tele-sync-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+            box-shadow: 0 0 8px var(--green); animation: pulse-dot 1.5s infinite;
+        }
+        @keyframes pulse-dot { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        .tele-hero { color: var(--admin); border-color: var(--admin); }
+        .tele-threat { color: var(--danger); border-color: var(--danger); }
+
+        .nav-links { display: flex; gap: 10px; align-items: center; }
+        .nav-link {
+            text-decoration: none; font-size: 11px; font-weight: bold;
+            padding: 4px 10px; border-radius: 3px; border: 1px solid;
+            transition: 0.2s;
+        }
+        .nav-link:hover { background: rgba(255,255,255,0.15); box-shadow: 0 0 10px currentColor; }
+
+        /* --- MAIN DASHBOARD LAYOUT --- */
+        #main-dashboard {
+            display: none; 
+            flex: 1; 
+            box-sizing: border-box; 
+            padding: 16px 20px 20px; 
+            gap: 20px;
+            height: calc(100vh - 54px);
+            overflow: hidden;
+        }
+
+        /* --- LEFT: LIVE CHAT --- */
+        .chat-container { 
+            flex: 1.1; 
+            border: 2px solid var(--admin); 
+            background: var(--panel-bg); 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 0 20px rgba(255,235,59,0.1); 
+            overflow: hidden;
+            border-radius: 4px;
+        }
+        .chat-header { 
+            background: var(--admin); 
+            color: black; 
+            font-weight: bold; 
+            padding: 12px 16px; 
+            text-align: center; 
+            letter-spacing: 2px; 
+            font-size: 0.95rem; 
+        }
+        .chat-window { 
+            flex: 1; 
+            padding: 16px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            scrollbar-width: thin;
+        }
+        .chat-input-wrapper { 
+            display: flex; 
+            gap: 10px; 
+            padding: 12px 16px; 
+            background: #111; 
+            border-top: 2px solid var(--admin); 
+        }
+        .chat-input-wrapper input { 
+            flex: 1; 
+            background: #000; 
+            border: 1px solid #555; 
+            color: white; 
+            padding: 12px; 
+            outline: none; 
+            font-family: inherit; 
+            font-size: 0.95rem; 
+        }
+        .chat-input-wrapper input:focus { border-color: var(--admin); box-shadow: 0 0 10px rgba(255,235,59,0.2); }
+        .chat-input-wrapper button { 
+            background: var(--admin); 
+            color: black; 
+            border: none; 
+            font-weight: bold; 
+            padding: 0 24px; 
+            cursor: pointer; 
+            font-family: inherit; 
+            font-size: 1rem; 
+            transition: 0.2s; 
+        }
+        .chat-input-wrapper button:hover { background: #fff; }
+        
+        .msg { max-width: 85%; padding: 8px 12px; font-size: 0.88rem; line-height: 1.4; border-radius: 2px; }
+        .msg.tx { align-self: flex-end; background: #333311; border-right: 4px solid var(--admin); }
+        .msg.rx { align-self: flex-start; background: #3a1f1f; border-left: 4px solid var(--danger); color: #ddd; }
+
+        /* --- RIGHT: VAULT & ACTIVE ROSTER --- */
+        .vault-container { 
+            flex: 2.2; 
+            border: 2px solid rgba(226, 91, 62, 0.6); 
+            background: rgba(18, 8, 8, 0.95); 
+            padding: 16px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+            border-radius: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--danger) #000;
+        }
+
+        .vault-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid rgba(226, 91, 62, 0.4);
+            padding-bottom: 8px;
+        }
+        .vault-tab-btn {
+            background: #150808;
+            border: 1px solid rgba(226, 91, 62, 0.6);
+            color: #aaa;
+            padding: 8px 16px;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            border-radius: 3px;
+        }
+        .vault-tab-btn.active {
+            background: var(--danger);
+            color: #000;
+            border-color: var(--danger);
+            box-shadow: 0 0 12px rgba(226, 91, 62, 0.4);
+        }
+
+        .cards-scroll-area {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            align-content: flex-start;
+            margin-bottom: 16px;
+            min-height: 180px;
+        }
+
+        .hero-admin-card {
+            border: 1px solid rgba(226,91,62,0.8);
+            background: rgba(12, 4, 4, 0.95);
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+        .hero-admin-card:hover {
+            transform: translateY(-2px);
+            border-color: #ff5252;
+        }
+        .card-top {
+            background: rgba(226,91,62,0.15);
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(226,91,62,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-alias {
+            color: var(--danger);
+            margin: 0;
+            font-size: 1.05rem;
+            letter-spacing: 1px;
+        }
+        .card-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            font-weight: bold;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+        .badge-resting { background: #1b5e20; color: #a5d6a7; border: 1px solid #4caf50; }
+        .badge-deployed { background: #b71c1c; color: #ffcdd2; border: 1px solid #f44336; }
+        .badge-reserve { background: #4a148c; color: #e1bee7; border: 1px solid #ab47bc; }
+
+        .card-body {
+            display: flex;
+            padding: 10px 12px;
+            gap: 12px;
+            flex: 1;
+        }
+        .card-info {
+            flex: 1;
+            font-size: 11px;
+            color: #999;
+            line-height: 1.4;
+        }
+        .card-info strong { color: #ccc; }
+        .card-radar-wrap {
+            width: 100px;
+            height: 100px;
+            position: relative;
+        }
+
+        .btn-card-action {
+            border: none;
+            padding: 10px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 11px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-deploy-card {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-deploy-card:hover { background: #ff3d00; }
+        .btn-decom-card {
+            background: #2b0c0c;
+            color: #ff8a80;
+            border-top: 1px solid #5a1919;
+        }
+        .btn-decom-card:hover { background: #4e1414; color: #fff; }
+
+        /* --- DOSSIER CREATOR PANEL --- */
+        .creator-panel { 
+            background: rgba(15, 6, 6, 0.98); 
+            border: 2px solid var(--danger); 
+            padding: 16px; 
+            margin-top: auto; 
+            box-shadow: 0 -8px 25px rgba(0,0,0,0.7); 
+            border-radius: 4px;
+        }
+        .creator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .creator-title {
+            color: var(--danger); 
+            margin: 0; 
+            letter-spacing: 2px; 
+            font-size: 1.1rem;
+        }
+        .creator-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .creator-panel input[type="text"], .creator-panel select { 
+            background: #000; 
+            border: 1px solid #555; 
+            color: white; 
+            padding: 10px 12px; 
+            outline: none; 
+            font-family: inherit; 
+            font-size: 12px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .creator-panel input[type="text"]:focus, .creator-panel select:focus { 
+            border-color: var(--danger); 
+            box-shadow: 0 0 8px rgba(226, 91, 62, 0.4); 
+        }
+        .stats-strip {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border: 1px solid #331111;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #aaa;
+            flex-wrap: wrap;
+        }
+        .stat-field {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stat-field input[type="number"] {
+            background: #000; 
+            border: 1px solid #666; 
+            color: var(--admin); 
+            padding: 4px 6px; 
+            outline: none; 
+            font-family: inherit; 
+            width: 48px; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 12px;
+        }
+        .button-bar {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-primary-deploy {
+            flex: 1.5;
+            background: var(--danger);
+            color: #000;
+            border: none;
+            padding: 14px;
+            font-weight: bold;
+            font-size: 12px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            border-radius: 2px;
+        }
+        .btn-primary-deploy:hover {
+            background: #ff7043;
+            box-shadow: 0 0 15px rgba(255, 112, 67, 0.5);
+        }
+        .btn-secondary-reserve {
+            flex: 1;
+            background: #2a1111;
+            color: #ffccbc;
+            border: 1px solid var(--danger);
+            padding: 14px;
+            font-weight: bold;
+            font-size: 11px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            border-radius: 2px;
+        }
+        .btn-secondary-reserve:hover {
+            background: #4a1919;
+            color: #fff;
+        }
+        #creator-status {
+            margin-top: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            min-height: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOCKDOWN SCREEN -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h1>HIGH COMMAND</h1>
+            <p>DIRECTOR-LEVEL AUTHORIZATION REQUIRED</p>
+                <input type="password" id="director-pass" placeholder="ENTER KEY" autofocus>
+            <button onclick="authDirector()">AUTHORIZE UPLINK</button>
+            <div id="login-error"></div>
+            <div style="margin-top:20px; font-size:12px;">
+                <a href="index.html" style="color:var(--admin); text-decoration:none; opacity:0.8;">← RETURN TO TERMINAL OS</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP TELEMETRY & NAVIGATION BAR -->
+    <div id="admin-topbar">
+        <div style="display:flex; align-items:center; gap:20px;">
+            <div style="font-weight:bold; color:var(--admin); letter-spacing:2px; font-size:13px;">[ HIGH COMMAND // DIRECTOR CONSOLE ]</div>
+            <div class="telemetry-strip">
+                <div class="tele-tag tele-sync">
+                    <div class="tele-sync-dot"></div>
+                    <span>SYNC: ACTIVE</span>
+                </div>
+                <div class="tele-tag tele-hero" id="tele-hero-count">OPERATIVES: 0</div>
+                <div class="tele-tag tele-threat" id="tele-threat-level">THREAT: 0%</div>
+            </div>
+        </div>
+
+        <div class="nav-links">
+            <a href="index.html" class="nav-link" style="color:#1eb9a6; border-color:#1eb9a655;">[SAT] TERMINAL OS</a>
+            <a href="security_center.html" class="nav-link" style="color:#ffeb3b; border-color:#ffeb3b55;">[DEF] SECURITY SOC</a>
+            <a href="../../CIVILIAN_CLIENT/index.html" class="nav-link" style="color:#4caf50; border-color:#4caf5055;">[SOS] CIVILIAN SOS</a>
+            <a href="../../classified_data.html" class="nav-link" style="color:#b388ff; border-color:#b388ff55;">[FILE] CLASSIFIED</a>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="main-dashboard">
+        <!-- LEFT: SECURE LINE CHAT -->
+        <div class="chat-container">
+            <div class="chat-header">DIRECTOR ↔ DISPATCHER SECURE LINE</div>
+            <div class="chat-window" id="admin-chat-window">
+                <div class="msg sys" style="color:#888; text-align:center; font-style:italic; border:none; width:100%;">CONNECTION ESTABLISHED.</div>
+            </div>
+            <div class="chat-input-wrapper">
+                <input type="text" id="admin-chat-input" placeholder="Type message to Dispatcher here...">
+                <button onclick="sendAdminChat()">TRANSMIT</button>
+            </div>
+        </div>
+
+        <!-- RIGHT: HERO VAULT & ACTIVE ASSETS -->
+        <div class="vault-container">
+            <div class="vault-tabs">
+                <button class="vault-tab-btn active" id="tab-active-btn" onclick="switchVaultTab('active')">ACTIVE DISPATCH ROSTER (LIVE)</button>
+                <button class="vault-tab-btn" id="tab-reserves-btn" onclick="switchVaultTab('reserves')">CLASSIFIED RESERVES VAULT</button>
+            </div>
+
+            <!-- CARDS CONTAINER -->
+            <div id="vault-list" class="cards-scroll-area"></div>
+
+            <!-- NEW HERO CREATOR -->
+            <div class="creator-panel">
+                <div class="creator-header">
+                    <h3 class="creator-title">[ + COMPILE & DEPLOY ASSET DOSSIER ]</h3>
+                    <span style="font-size:10px; color:#888;">REAL-TIME SYNC // IMMEDIATE DISPATCH</span>
+                </div>
+                
+                <div class="creator-grid">
+                    <input type="text" id="new-alias" placeholder="CODENAME / ALIAS (e.g. TITAN)" autocomplete="off">
+                    <select id="new-skill">
+                        <option value="brawler">BRAWLER (Combat / Armor / Melee)</option>
+                        <option value="elemental">ELEMENTAL (Fire / Ice / Energy)</option>
+                        <option value="tech">TECH (Cybernetics / Support / Intel)</option>
+                        <option value="mental">MENTAL (Telekinesis / Psionic)</option>
+                    </select>
+                </div>
+                <div class="creator-grid">
+                    <input type="text" id="new-trueid" placeholder="TRUE ID (e.g. Marcus Vance)" autocomplete="off">
+                    <input type="text" id="new-blood" placeholder="BLOOD TYPE (e.g. O- Negative / AB+ Enhanced)" autocomplete="off">
+                </div>
+                <input type="text" id="new-eval" placeholder="EVALUATION NOTES (Combat Lore & Tactical Profile)" autocomplete="off" style="width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+                
+                <div class="stats-strip">
+                    <strong style="color:var(--admin);">BASE ATTRIBUTES:</strong>
+                    <div class="stat-field">ATK: <input type="number" id="s-atk" value="85" min="10" max="100"></div>
+                    <div class="stat-field">DEF: <input type="number" id="s-def" value="70" min="10" max="100"></div>
+                    <div class="stat-field">AGI: <input type="number" id="s-agi" value="65" min="10" max="100"></div>
+                    <div class="stat-field">COM: <input type="number" id="s-com" value="50" min="10" max="100"></div>
+                    <div class="stat-field">INT: <input type="number" id="s-int" value="60" min="10" max="100"></div>
+                </div>
+
+                <div class="button-bar">
+                    <button class="btn-primary-deploy" onclick="deployHeroDirectly()">[ [GO] AUTHORIZE & DEPLOY HERO NOW ]</button>
+                    <button class="btn-secondary-reserve" onclick="saveToReserves()">[ [FILE] SAVE TO RESERVES ]</button>
+                </div>
+
+                <div id="creator-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentVaultTab = 'active'; // 'active' or 'reserves'
+        let vaultChartInstances = {};
+        let activeHeroesMap = {};
+
+        // In-memory reserves catalogue (pre-seeded with black ops reserves)
+        const classifiedAgents = {
+            "C1": { name: "ECLIPSE", skill: "mental", true_name: "Kaelen Vance", blood_type: "O- Negative", eval: "Clinical empathy suppression. Psionic overload capable.", stats: { combat: 90, defense: 60, agility: 80, comms: 40, intel: 95 } },
+            "C2": { name: "OVERRIDE", skill: "tech", true_name: "Jax Mercer", blood_type: "AB+ Enhanced", eval: "Textbook sociopathy channeled into tactical cyber warfare.", stats: { combat: 85, defense: 85, agility: 70, comms: 90, intel: 85 } }
+        };
+
+        // --- AUTHENTICATION ---
+        async function authDirector() {
+            const pass = document.getElementById('director-pass').value.trim();
+            const err = document.getElementById('login-error');
+            err.style.color = "var(--admin)";
+            err.innerText = "AUTHENTICATING KEY...";
+
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/auth.php', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                });
+                const data = await res.json();
+
+                if (data.success && (data.role === 'super_admin' || pass === '200828')) {
+                    sessionStorage.setItem('sdn_role', 'super_admin');
+                    bootDashboard();
+                } else if (data.success && data.role !== 'super_admin') {
+                    err.style.color = "var(--danger)";
+                    err.innerText = "ACCESS DENIED: CLEARANCE TOO LOW.";
+                } else {
+                    err.style.color = "var(--danger)";
+                    err.innerText = data.message || "ACCESS DENIED.";
+                }
+            } catch (e) {
+                // Fallback for offline demo
+                if (pass === '200828') {
+                    sessionStorage.setItem('sdn_role', 'super_admin');
+                    bootDashboard();
+                } else {
+                    err.style.color = "var(--danger)";
+                    err.innerText = "UPLINK FAILED.";
+                }
+            }
+        }
+
+        function bootDashboard() {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('admin-topbar').style.display = 'flex';
+            document.getElementById('main-dashboard').style.display = 'flex';
+            renderVault();
+            fetchAdminChat();
+            fetchTelemetry();
+            setInterval(fetchAdminChat, 2000); 
+            setInterval(renderVault, 3000);
+            setInterval(fetchTelemetry, 3000);
+        }
+
+        if (sessionStorage.getItem('sdn_role') === 'super_admin') {
+            bootDashboard();
+        }
+
+        document.getElementById('director-pass').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); authDirector(); }
+        });
+
+        // --- TELEMETRY SYNC ---
+        async function fetchTelemetry() {
+            try {
+                const sigRes = await fetch('/BACKEND/CODE_PHP/get_signals.php?t=' + Date.now());
+                const sigData = await sigRes.json();
+                if (sigData.success) {
+                    const count = (sigData.data || []).length;
+                    const threat = Math.min(count * 15, 100);
+                    const threatEl = document.getElementById('tele-threat-level');
+                    if (threatEl) threatEl.innerText = `THREAT: ${threat}%`;
+                }
+            } catch(e){}
+        }
+
+        // --- CHAT LOGIC ---
+        async function fetchAdminChat() {
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/chat_admin.php?t=' + Date.now());
+                const data = await res.json();
+                if (data.success) {
+                    const win = document.getElementById('admin-chat-window');
+                    let html = '';
+                    data.messages.forEach(msg => {
+                        const isMe = msg.sender === 'ADMIN' || msg.sender === 'DIRECTOR';
+                        html += `<div class="msg ${isMe ? 'tx' : 'rx'}"><strong>[${msg.sender}]</strong>: ${msg.message}</div>`;
+                    });
+                    if (html !== '' && win.innerHTML !== html) {
+                        win.innerHTML = html;
+                        win.scrollTop = win.scrollHeight;
+                    }
+                }
+            } catch(e){}
+        }
+
+        async function sendAdminChat() {
+            const input = document.getElementById('admin-chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+            input.value = '';
+            await fetch('/BACKEND/CODE_PHP/chat_admin.php', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ sender: 'DIRECTOR', message: message }) 
+            });
+            fetchAdminChat();
+        }
+
+        document.getElementById('admin-chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); sendAdminChat(); }
+        });
+
+        // --- TAB SWITCHING ---
+        function switchVaultTab(tab) {
+            currentVaultTab = tab;
+            document.getElementById('tab-active-btn').classList.toggle('active', tab === 'active');
+            document.getElementById('tab-reserves-btn').classList.toggle('active', tab === 'reserves');
+            renderVault();
+        }
+
+        // --- HERO CREATION: DIRECT DEPLOY ---
+        async function deployHeroDirectly() {
+            const alias = document.getElementById('new-alias').value.trim();
+            const skill = document.getElementById('new-skill').value.trim();
+            const statusDiv = document.getElementById('creator-status');
+
+            if (!alias) {
+                statusDiv.style.color = "var(--danger)";
+                statusDiv.innerText = "ERROR: Hero Codename / Alias is required.";
+                return;
+            }
+
+            const payload = {
+                name: alias.toUpperCase(),
+                skill: skill.toLowerCase(),
+                combat: parseInt(document.getElementById('s-atk').value) || 75,
+                defense: parseInt(document.getElementById('s-def').value) || 60,
+                agility: parseInt(document.getElementById('s-agi').value) || 70,
+                comms: parseInt(document.getElementById('s-com').value) || 55,
+                intel: parseInt(document.getElementById('s-int').value) || 65
+            };
+
+            statusDiv.style.color = "var(--admin)";
+            statusDiv.innerText = `TRANSMITTING ${payload.name} TO ACTIVE DISPATCH ROSTER...`;
+
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/authorize_agent.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-SDN-Auth': 'SFXC-BlackOps-2026-Alpha' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    statusDiv.style.color = "var(--green)";
+                    statusDiv.innerText = `✓ SUCCESS: [${payload.name}] IS DEPLOYED AND SYNCED TO DISPATCHER TERMINAL.`;
+                    
+                    // Clear inputs
+                    document.getElementById('new-alias').value = '';
+                    document.getElementById('new-trueid').value = '';
+                    document.getElementById('new-blood').value = '';
+                    document.getElementById('new-eval').value = '';
+                    
+                    // Switch to Active Tab and render
+                    currentVaultTab = 'active';
+                    document.getElementById('tab-active-btn').classList.add('active');
+                    document.getElementById('tab-reserves-btn').classList.remove('active');
+                    await renderVault();
+                } else {
+                    statusDiv.style.color = "var(--danger)";
+                    statusDiv.innerText = "DEPLOYMENT ERROR: " + data.error;
+                }
+            } catch (err) {
+                statusDiv.style.color = "var(--danger)";
+                statusDiv.innerText = "NETWORK ERROR: Could not reach mainframe.";
+            }
+        }
+
+        // --- HERO CREATION: SAVE TO RESERVES ---
+        function saveToReserves() {
+            const alias = document.getElementById('new-alias').value.trim();
+            const skill = document.getElementById('new-skill').value.trim();
+            const statusDiv = document.getElementById('creator-status');
+
+            if (!alias) {
+                statusDiv.style.color = "var(--danger)";
+                statusDiv.innerText = "ERROR: Hero Codename is required for reserve filing.";
+                return;
+            }
+
+            const resId = 'RES-' + Date.now().toString().slice(-4);
+            classifiedAgents[resId] = {
+                name: alias.toUpperCase(),
+                skill: skill.toLowerCase(),
+                true_name: document.getElementById('new-trueid').value.trim() || 'CLASSIFIED DOSSIER',
+                blood_type: document.getElementById('new-blood').value.trim() || 'UNKNOWN',
+                eval: document.getElementById('new-eval').value.trim() || 'Stored in black ops reserves.',
+                stats: {
+                    combat: parseInt(document.getElementById('s-atk').value) || 75,
+                    defense: parseInt(document.getElementById('s-def').value) || 60,
+                    agility: parseInt(document.getElementById('s-agi').value) || 70,
+                    comms: parseInt(document.getElementById('s-com').value) || 55,
+                    intel: parseInt(document.getElementById('s-int').value) || 65
+                }
+            };
+
+            statusDiv.style.color = "var(--admin)";
+            statusDiv.innerText = `✓ [${alias.toUpperCase()}] SECURED IN CLASSIFIED RESERVES.`;
+
+            document.getElementById('new-alias').value = '';
+            document.getElementById('new-trueid').value = '';
+            document.getElementById('new-blood').value = '';
+            document.getElementById('new-eval').value = '';
+
+            currentVaultTab = 'reserves';
+            document.getElementById('tab-reserves-btn').classList.add('active');
+            document.getElementById('tab-active-btn').classList.remove('active');
+            renderVault();
+        }
+
+        // --- RENDER VAULT (ACTIVE VS RESERVES) ---
+        async function renderVault() {
+            const container = document.getElementById('vault-list');
+            if (!container) return;
+
+            // Fetch live heroes from database
+            let liveHeroes = {};
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/get_heroes.php?t=' + Date.now());
+                const data = await res.json();
+                if (data.success) {
+                    liveHeroes = data.heroes || {};
+                    activeHeroesMap = liveHeroes;
+                }
+            } catch(e){}
+
+            const heroCount = Object.keys(liveHeroes).length;
+            const teleHero = document.getElementById('tele-hero-count');
+            if (teleHero) teleHero.innerText = `OPERATIVES: ${heroCount}`;
+
+            let html = '';
+
+            if (currentVaultTab === 'active') {
+                // Show currently deployed heroes in db.json
+                if (heroCount === 0) {
+                    html = `<div style="color:#888; font-style:italic; padding:30px; text-align:center; width:100%;">NO OPERATIVES CURRENTLY DEPLOYED IN SECTOR. USE THE DOSSIER CREATOR BELOW TO AUTHORIZE HEROES.</div>`;
+                } else {
+                    Object.values(liveHeroes).forEach(hero => {
+                        const statusBadge = (hero.status === 'DEPLOYED') ? 'badge-deployed' : 'badge-resting';
+                        const radarId = `radar-act-${hero.id}`;
+                        html += `
+                            <div class="hero-admin-card" style="border-color: rgba(30,185,166,0.6);">
+                                <div class="card-top" style="background: rgba(30,185,166,0.15);">
+                                    <div>
+                                        <h3 class="card-alias" style="color:var(--teal);">[ ${hero.name} ]</h3>
+                                        <div style="font-size:10px; color:#aaa;">CLASS: ${(hero.skill || 'TECH').toUpperCase()} // ID: ${hero.id}</div>
+                                    </div>
+                                    <span class="card-badge ${statusBadge}">${hero.status}</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="card-info">
+                                        <p><strong>SECTOR COORDS:</strong> [X: ${hero.x}%, Y: ${hero.y}%]</p>
+                                        <p><strong>COMBAT RECORD:</strong> ${hero.deeds_logged || 0} incidents cleared</p>
+                                        <p style="color:#777; font-size:10px;"><em>Live synced to Dispatch terminal</em></p>
+                                    </div>
+                                    <div class="card-radar-wrap"><canvas id="${radarId}"></canvas></div>
+                                </div>
+                                <button class="btn-card-action btn-decom-card" onclick="decommissionActiveHero('${hero.id}', '${hero.name}')">[ 🛑 DECOMMISSION ASSET ]</button>
+                            </div>
+                        `;
+                    });
+                }
+            } else {
+                // Show Reserves catalogue
+                const activeNames = Object.values(liveHeroes).map(h => h.name.toUpperCase());
+                const reserveIds = Object.keys(classifiedAgents).filter(id => !activeNames.includes(classifiedAgents[id].name.toUpperCase()));
+
+                if (reserveIds.length === 0) {
+                    html = `<div style="color:#888; font-style:italic; padding:30px; text-align:center; width:100%;">ALL CLASSIFIED RESERVE AGENTS HAVE BEEN DEPLOYED. FILE NEW DOSSIERS BELOW.</div>`;
+                } else {
+                    reserveIds.forEach(id => {
+                        const agent = classifiedAgents[id];
+                        const radarId = `radar-res-${id}`;
+                        html += `
+                            <div class="hero-admin-card">
+                                <div class="card-top">
+                                    <div>
+                                        <h3 class="card-alias">[ ${agent.name} ]</h3>
+                                        <div style="font-size:10px; color:#aaa;">CLASS: ${agent.skill.toUpperCase()} // STANDBY</div>
+                                    </div>
+                                    <span class="card-badge badge-reserve">RESERVE</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="card-info">
+                                        <p><strong>TRUE ID:</strong> ${agent.true_name}</p>
+                                        <p><strong>BLOOD:</strong> ${agent.blood_type}</p>
+                                        <p style="font-style:italic; color:#aaa;">"${agent.eval}"</p>
+                                    </div>
+                                    <div class="card-radar-wrap"><canvas id="${radarId}"></canvas></div>
+                                </div>
+                                <button class="btn-card-action btn-deploy-card" onclick="deployReserveAgent('${id}')">[ ⚡ AUTHORIZE SECTOR DEPLOYMENT ]</button>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+            container.innerHTML = html;
+
+            // Draw Charts
+            setTimeout(() => {
+                if (currentVaultTab === 'active') {
+                    Object.values(liveHeroes).forEach(hero => {
+                        const canvas = document.getElementById(`radar-act-${hero.id}`);
+                        if (!canvas) return;
+                        const ctx = canvas.getContext('2d');
+                        if (vaultChartInstances[hero.id]) vaultChartInstances[hero.id].destroy();
+                        
+                        vaultChartInstances[hero.id] = new Chart(ctx, {
+                            type: 'radar',
+                            data: {
+                                labels: ['ATK', 'DEF', 'AGI', 'COM', 'INT'],
+                                datasets: [{
+                                    data: [hero.stat_combat || 65, hero.stat_defense || 50, hero.stat_agility || 70, hero.stat_comms || 55, hero.stat_intel || 60],
+                                    backgroundColor: 'rgba(30, 185, 166, 0.25)',
+                                    borderColor: '#1eb9a6',
+                                    borderWidth: 1.5,
+                                    pointRadius: 0
+                                }]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                scales: { r: { min: 0, max: 100, ticks:{display:false}, pointLabels:{color:'#888', font:{size:7}} } },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    });
+                } else {
+                    Object.keys(classifiedAgents).forEach(id => {
+                        const canvas = document.getElementById(`radar-res-${id}`);
+                        if (!canvas) return;
+                        const ctx = canvas.getContext('2d');
+                        if (vaultChartInstances[id]) vaultChartInstances[id].destroy();
+                        
+                        vaultChartInstances[id] = new Chart(ctx, {
+                            type: 'radar',
+                            data: {
+                                labels: ['ATK', 'DEF', 'AGI', 'COM', 'INT'],
+                                datasets: [{
+                                    data: [classifiedAgents[id].stats.combat, classifiedAgents[id].stats.defense, classifiedAgents[id].stats.agility, classifiedAgents[id].stats.comms, classifiedAgents[id].stats.intel],
+                                    backgroundColor: 'rgba(226, 91, 62, 0.25)',
+                                    borderColor: '#e25b3e',
+                                    borderWidth: 1.5,
+                                    pointRadius: 0
+                                }]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                scales: { r: { min: 0, max: 100, ticks:{display:false}, pointLabels:{color:'#888', font:{size:7}} } },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    });
+                }
+            }, 60);
+        }
+
+        // Deploy agent from reserve vault
+        async function deployReserveAgent(id) {
+            const agent = classifiedAgents[id];
+            if (!agent) return;
+
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/authorize_agent.php', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-SDN-Auth': 'SFXC-BlackOps-2026-Alpha' },
+                    body: JSON.stringify({ 
+                        name: agent.name, 
+                        skill: agent.skill,
+                        combat: agent.stats.combat, 
+                        defense: agent.stats.defense, 
+                        agility: agent.stats.agility, 
+                        comms: agent.stats.comms, 
+                        intel: agent.stats.intel
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    delete classifiedAgents[id];
+                    currentVaultTab = 'active';
+                    document.getElementById('tab-active-btn').classList.add('active');
+                    document.getElementById('tab-reserves-btn').classList.remove('active');
+                    renderVault();
+                } else {
+                    alert("AUTHORIZATION ERROR: " + data.error);
+                }
+            } catch(e) {
+                alert("TRANSMISSION ERROR: Mainframe database unreachable.");
+            }
+        }
+
+        // Decommission active hero
+        async function decommissionActiveHero(heroId, heroName) {
+            if (!confirm(`DIRECTOR OVERRIDE: Confirm permanent decommission of operative ${heroName} [ID: ${heroId}]?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/delete_hero.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-SDN-Auth': 'SFXC-BlackOps-2026-Alpha' },
+                    body: JSON.stringify({ hero_id: heroId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    await renderVault();
+                } else {
+                    alert("DECOMMISSION FAILED: " + data.error);
+                }
+            } catch(e) {
+                alert("TRANSMISSION FAILED: Could not access database.");
+            }
+        }
+    </script>
+</body>
+</html>

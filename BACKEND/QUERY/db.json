@@ -1,0 +1,151 @@
+{
+    "threat_level": 20,
+    "heroes": {
+        "3": {
+            "id": 3,
+            "name": "QVRMQVM=",
+            "skill": "brawler",
+            "status": "RESTING",
+            "stat_combat": 80,
+            "stat_defense": 85,
+            "stat_agility": 60,
+            "stat_comms": 45,
+            "stat_intel": 55,
+            "deeds_logged": 0,
+            "x": 80,
+            "y": 80
+        },
+        "4": {
+            "id": 4,
+            "name": "Uk9TIEFO",
+            "skill": "tech",
+            "status": "RESTING",
+            "stat_combat": 50,
+            "stat_defense": 60,
+            "stat_agility": 70,
+            "stat_comms": 90,
+            "stat_intel": 95,
+            "deeds_logged": 0,
+            "x": 20,
+            "y": 65
+        }
+    },
+    "signals": [],
+    "admin_comms": [
+        {
+            "id": 1,
+            "sender": "DIRECTOR",
+            "message": "All sector assets on alert. Standby for dispatch directives.",
+            "created_at": "2026-10-07 18:00:00"
+        },
+        {
+            "id": 2,
+            "sender": "DISPATCHER",
+            "message": "High command status test over HTTP",
+            "created_at": "2026-10-07 12:24:08"
+        },
+        {
+            "id": 3,
+            "sender": "DIRECTOR",
+            "message": "test",
+            "created_at": "2026-10-07 18:59:26"
+        },
+        {
+            "id": 4,
+            "sender": "DISPATCHER",
+            "message": "heyy",
+            "created_at": "2026-10-07 18:25:42"
+        }
+    ],
+    "incidents": {
+        "001": {
+            "id": "001",
+            "type": "rescue",
+            "target": "CIVILIAN: Lost Child",
+            "req_skill": "tech",
+            "time_left": 32,
+            "status": "active",
+            "x": 66,
+            "y": 57,
+            "width": 115,
+            "height": 99
+        },
+        "002": {
+            "id": "002",
+            "type": "rescue",
+            "target": "CIVILIAN: Stranded Pilot",
+            "req_skill": "brawler",
+            "time_left": 27,
+            "status": "active",
+            "x": 33,
+            "y": 44,
+            "width": 70,
+            "height": 83
+        },
+        "003": {
+            "id": "003",
+            "type": "rescue",
+            "target": "CIVILIAN: Stranded Pilot",
+            "req_skill": "tech",
+            "time_left": 32,
+            "status": "active",
+            "x": 29,
+            "y": 65,
+            "width": 98,
+            "height": 72
+        },
+        "004": {
+            "id": "004",
+            "type": "combat",
+            "target": "VILLAIN: Cyber-Ninja",
+            "req_skill": "elemental",
+            "time_left": 44,
+            "status": "active",
+            "x": 63,
+            "y": 21,
+            "width": 71,
+            "height": 84
+        }
+    },
+    "decorations": [
+        {
+            "type": "road",
+            "x": 64,
+            "y": 43,
+            "size": 242
+        },
+        {
+            "type": "mountain",
+            "x": 77,
+            "y": 62,
+            "size": 230
+        },
+        {
+            "type": "mountain",
+            "x": 20,
+            "y": 32,
+            "size": 275
+        },
+        {
+            "type": "road",
+            "x": 15,
+            "y": 54,
+            "size": 170
+        },
+        {
+            "type": "mountain",
+            "x": 84,
+            "y": 3,
+            "size": 282
+        },
+        {
+            "type": "mountain",
+            "x": 37,
+            "y": 4,
+            "size": 258
+        }
+    ],
+    "next_hero_id": 11,
+    "next_signal_id": 19,
+    "next_comm_id": 5
+}

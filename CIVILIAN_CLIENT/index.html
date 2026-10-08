@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SAN FRANZ // BIOMETRIC CITIZEN UPLINK</title>
+    <style>
+        :root {
+            --neon-green: #33ff33;
+            --neon-red: #ff3333;
+            --theme-color: #33ff33;
+            --theme-bg: #031005;
+            --panel-bg: #040d06;
+            --border-dim: #115511;
+        }
+        body {
+            background-color: #020502;
+            color: #d6e8d6;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            padding: 15px;
+            user-select: none;
+            -webkit-user-select: none;
+            background-image: 
+                linear-gradient(rgba(51, 255, 51, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(51, 255, 51, 0.08) 1px, transparent 1px);
+            background-size: 25px 25px;
+            transition: background-color 0.4s;
+        }
+        body.theme-threat {
+            --theme-color: #ff3333;
+            --theme-bg: #140505;
+            --panel-bg: #0e0303;
+            --border-dim: #551111;
+            background-color: #060202;
+            background-image: 
+                linear-gradient(rgba(255, 51, 51, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 51, 51, 0.08) 1px, transparent 1px);
+        }
+
+        .network-bar {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 11px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .network-bar a {
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            border: 1px solid;
+            transition: 0.2s;
+        }
+        .network-bar a:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .pixel-panel {
+            width: 100%;
+            max-width: 420px;
+            background: var(--panel-bg);
+            border: 3px solid var(--theme-color);
+            border-radius: 8px;
+            padding: 24px;
+            box-sizing: border-box;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9), inset 0 0 20px rgba(0,0,0,0.8);
+            position: relative;
+            transition: border-color 0.3s;
+        }
+
+        /* MODE TABS */
+        .mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .mode-tab {
+            flex: 1;
+            padding: 12px 8px;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+        .tab-emergency {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+        .tab-emergency.active {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+        .tab-threat {
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+        }
+        .tab-threat.active {
+            background: var(--neon-red);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-red);
+        }
+
+        .header-bar {
+            border-bottom: 2px dashed var(--theme-color);
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 2px;
+            color: var(--theme-color);
+            text-shadow: 0 0 10px var(--theme-color);
+        }
+        .sys-text {
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 6px;
+            color: #888;
+        }
+
+        /* FINGERPRINT SCANNER PAD */
+        .scan-container {
+            width: 170px;
+            height: 200px;
+            margin: 20px auto;
+            position: relative;
+            border: 2px solid var(--border-dim);
+            background: #000;
+            cursor: pointer;
+            touch-action: manipulation;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: border-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            outline: none;
+        }
+        .scan-container:hover, .scan-container:focus {
+            border-color: var(--theme-color);
+            box-shadow: 0 0 15px rgba(51, 255, 51, 0.3);
+        }
+        body.theme-threat .scan-container:hover, body.theme-threat .scan-container:focus {
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.3);
+        }
+        .scan-container.scanning {
+            border-color: var(--theme-color);
+            box-shadow: 0 0 25px var(--theme-color);
+            animation: pulse-border 0.8s infinite alternate;
+        }
+        @keyframes pulse-border {
+            from { box-shadow: 0 0 10px var(--theme-color); }
+            to { box-shadow: 0 0 28px var(--theme-color); }
+        }
+
+        /* ASCII FINGERPRINT */
+        .fingerprint {
+            font-size: 13px;
+            line-height: 13px;
+            color: var(--border-dim);
+            white-space: pre;
+            font-family: monospace;
+            transition: color 0.2s, text-shadow 0.2s;
+            position: relative;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .scan-container.scanning .fingerprint,
+        .scan-container:active .fingerprint {
+            color: var(--theme-color);
+            text-shadow: 0 0 12px var(--theme-color);
+        }
+
+        /* LASER SCANNING BEAM */
+        .scan-line {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 0%;
+            background: rgba(51, 255, 51, 0.35);
+            border-top: 3px solid var(--theme-color);
+            box-shadow: 0 -10px 25px var(--theme-color);
+            z-index: 3;
+            pointer-events: none;
+            transition: height 0.05s linear;
+        }
+        body.theme-threat .scan-line {
+            background: rgba(255, 51, 51, 0.35);
+        }
+
+        /* SCAN HUD BADGES */
+        .scan-hud {
+            position: absolute;
+            top: 8px;
+            font-size: 9px;
+            letter-spacing: 1px;
+            color: var(--theme-color);
+            font-weight: bold;
+            z-index: 4;
+            pointer-events: none;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid var(--border-dim);
+        }
+        .scan-percent {
+            position: absolute;
+            bottom: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--theme-color);
+            z-index: 4;
+            pointer-events: none;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        /* LIVE READOUT TERMINAL */
+        .terminal-readout {
+            background: #000;
+            border: 2px solid var(--border-dim);
+            padding: 12px;
+            font-size: 11px;
+            text-align: left;
+            height: 75px;
+            color: #aaa;
+            overflow-y: auto;
+            margin-top: 15px;
+            border-radius: 4px;
+            line-height: 1.4;
+        }
+
+        /* LOCKDOWN OVERLAY AFTER SUCCESSFUL TRANSMIT */
+        #lockdown-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.96);
+            z-index: 999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 4px solid var(--theme-color);
+            box-sizing: border-box;
+            border-radius: 6px;
+            padding: 20px;
+        }
+        #lockdown-screen h2 {
+            font-size: 22px;
+            margin: 0 0 10px 0;
+            color: var(--theme-color);
+        }
+        #cooldown-timer {
+            font-size: 55px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px var(--theme-color);
+            margin: 10px 0;
+        }
+        .override-btn {
+            background: transparent;
+            color: var(--theme-color);
+            border: 1px solid var(--theme-color);
+            padding: 8px 16px;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .override-btn:hover {
+            background: var(--theme-color);
+            color: #000;
+            box-shadow: 0 0 15px var(--theme-color);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP PORTAL LINK BAR -->
+    <div class="network-bar">
+        <span style="color: #666; font-weight: bold;">SECTOR RADAR:</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="../FRONT-END/DESIGN/index.html" style="color: #1eb9a6; border-color: #1eb9a666;">[SAT] RADAR MAP</a>
+            <a href="../FRONT-END/DESIGN/admin_panel.html" style="color: #ffeb3b; border-color: #ffeb3b66;">[HQ] ADMIN</a>
+            <a href="../FRONT-END/DESIGN/security_center.html" style="color: #00e676; border-color: #00e67666;">[DEF] SOC</a>
+        </div>
+    </div>
+
+    <!-- MAIN BIOMETRIC CLIENT -->
+    <div class="pixel-panel" id="main-panel">
+        
+        <!-- MODE SELECTOR -->
+        <div class="mode-tabs">
+            <button class="mode-tab tab-emergency active" id="tab-med" onclick="setMode('emergency')">
+                [SOS] MEDICAL SOS
+            </button>
+            <button class="mode-tab tab-threat" id="tab-vil" onclick="setMode('villain')">
+                [THR] HOSTILE THREAT
+            </button>
+        </div>
+
+        <div class="header-bar">
+            <h1 id="panel-title">MEDICAL SOS</h1>
+            <div class="sys-text">DEVICE: <span id="device-id" style="color:#fff;"></span></div>
+            <div class="sys-text" id="action-prompt" style="color: var(--theme-color); margin-top:4px;">CLICK OR HOLD THUMB TO AUTO-PING RADAR MAP</div>
+        </div>
+
+        <!-- FINGERPRINT SCANNER -->
+        <div class="scan-container" id="scanner-btn" tabindex="0" role="button" aria-label="Biometric Fingerprint Scanner" title="Click or hold thumb to scan and transmit ping">
+            <div class="scan-hud" id="scan-hud-tag">READY</div>
+            <div class="fingerprint">
+  _,-~-.
+ /.-'~_.\
+(/_,-' \ \
+ ||__.-' ||
+ || _,--' |
+  \ \_.-' /
+   `-._,-'
+            </div>
+            <div class="scan-line" id="scan-laser"></div>
+            <div class="scan-percent" id="scan-percent-badge">0%</div>
+        </div>
+
+        <div class="terminal-readout" id="readout">
+            > BIOMETRIC SENSORS ONLINE.<br>
+            > CLICK OR HOLD THUMB TO TRANSMIT RADAR PING.<br>
+        </div>
+
+        <!-- SUCCESSFUL TRANSMISSION LOCKDOWN -->
+        <div id="lockdown-screen">
+            <h2 id="lockdown-title">TRANSMISSION CONFIRMED</h2>
+            <div id="lockdown-desc" style="color: #aaa; font-size: 13px;">RADAR PING BROADCASTED TO SECTOR SAN FRANZ.</div>
+            <div id="cooldown-timer">60</div>
+            <div style="color: #666; font-size: 10px; letter-spacing: 1px;">DEVICE COOLDOWN ACTIVE (ANTI-SPAM)</div>
+            <button class="override-btn" onclick="overrideCooldown()">[ ⚡ OVERRIDE / TEST AGAIN ]</button>
+        </div>
+
+    </div>
+
+    <script>
+        let currentMode = 'emergency'; // 'emergency' or 'villain'
+
+        // 1. Generate / Retrieve Persistent Citizen Device ID
+        if (!localStorage.getItem('sdn_device_id')) {
+            localStorage.setItem('sdn_device_id', 'CIV-' + Math.floor(10000 + Math.random() * 90000));
+        }
+        document.getElementById('device-id').innerText = localStorage.getItem('sdn_device_id');
+
+        const btn = document.getElementById('scanner-btn');
+        const laser = document.getElementById('scan-laser');
+        const readout = document.getElementById('readout');
+        const lockdown = document.getElementById('lockdown-screen');
+        const timerDisplay = document.getElementById('cooldown-timer');
+        const panelTitle = document.getElementById('panel-title');
+        const tabMed = document.getElementById('tab-med');
+        const tabVil = document.getElementById('tab-vil');
+        const scanHudTag = document.getElementById('scan-hud-tag');
+        const scanPercentBadge = document.getElementById('scan-percent-badge');
+
+        let pressTimer = null;
+        let countdownTimer = null;
+        let progress = 0;
+        let isTransmitting = false;
+        let isScanning = false;
+        let pressStartTime = 0;
+
+        // BroadcastChannel for instant cross-tab map updates
+        const radarChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('sdn_emergency_network') : null;
+        if (radarChannel) {
+            radarChannel.onmessage = (event) => {
+                if (event.data && (event.data.type === 'CLEAR_SIGNALS' || event.data.type === 'REMOVE_SIGNAL')) {
+                    logTerminal("> <span style='color:var(--theme-color)'>TACTICAL UPDATE: DISPATCH UNIT ARRIVED. BEACON DEACTIVATED.</span>");
+                }
+            };
+        }
+
+        // Web Audio Synthesizer (Zero external dependencies)
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playScanHum() {
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = currentMode === 'villain' ? 'sawtooth' : 'sine';
+                const baseFreq = currentMode === 'villain' ? 180 : 280;
+                osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 2.2, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            } catch(e) {}
+        }
+
+        function playSuccessPing() {
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(currentMode === 'villain' ? 440 : 587.33, ctx.currentTime);
+                osc.frequency.setValueAtTime(currentMode === 'villain' ? 880 : 1174.66, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.75);
+            } catch(e) {}
+        }
+
+        function logTerminal(text) {
+            readout.innerHTML += text + "<br>";
+            readout.scrollTop = readout.scrollHeight;
+        }
+
+        function setMode(mode) {
+            if (isTransmitting || lockdown.style.display === 'flex') return;
+            currentMode = mode;
+            if (mode === 'emergency') {
+                document.body.classList.remove('theme-threat');
+                tabMed.classList.add('active');
+                tabVil.classList.remove('active');
+                panelTitle.innerText = "MEDICAL SOS";
+                logTerminal("> MODE SWITCHED: [MEDICAL / RESCUE SOS].");
+                logTerminal("> CLICK OR HOLD THUMB TO BROADCAST PING.");
+            } else {
+                document.body.classList.add('theme-threat');
+                tabMed.classList.remove('active');
+                tabVil.classList.add('active');
+                panelTitle.innerText = "HOSTILE THREAT REPORT";
+                logTerminal("> MODE SWITCHED: [HOSTILE THREAT BEACON].");
+                logTerminal("> CLICK OR HOLD THUMB TO BROADCAST PING.");
+            }
+            checkCooldown();
+        }
+
+        // --- SCANNING WORKFLOW (CLICK OR HOLD) ---
+        function startScanSequence() {
+            if (isTransmitting || isScanning || lockdown.style.display === 'flex') return;
+            
+            isScanning = true;
+            btn.classList.add('scanning');
+            scanHudTag.innerText = "SCANNING...";
+            logTerminal(`> ENGAGING SENSOR: [${currentMode.toUpperCase()}]...`);
+            logTerminal("> ANALYZING DERMAL TOPOLOGY...");
+            
+            clearInterval(pressTimer);
+            progress = 0;
+            
+            pressTimer = setInterval(() => {
+                progress += 5;
+                if (progress > 100) progress = 100;
+                
+                laser.style.height = progress + '%';
+                scanPercentBadge.innerText = progress + '%';
+                if (progress % 20 === 0) playScanHum();
+
+                if (progress >= 100) {
+                    clearInterval(pressTimer);
+                    pressTimer = null;
+                    completeScan();
+                }
+            }, 45); // Smooth ~0.9s scan duration
+        }
+
+        function completeScan() {
+            scanHudTag.innerText = "VERIFIED";
+            scanPercentBadge.innerText = "100%";
+            playSuccessPing();
+            logTerminal("> <strong style='color:var(--theme-color)'>BIOMETRIC MATCH CONFIRMED (99.8%). PINGING RADAR...</strong>");
+            setTimeout(() => {
+                executeTransmission();
+            }, 150);
+        }
+
+        function handlePointerDown(e) {
+            if (isTransmitting || lockdown.style.display === 'flex') return;
+            pressStartTime = Date.now();
+            if (!isScanning) {
+                startScanSequence();
+            }
+        }
+
+        function handlePointerUp(e) {
+            // If released very quickly, let the automated scan sequence finish
+            // This guarantees single clicks/taps complete the scan seamlessly!
+            const holdDuration = Date.now() - pressStartTime;
+            if (holdDuration > 800 && progress < 80) {
+                // If held for long and deliberately released early before completion
+                cancelScan();
+            }
+        }
+
+        function cancelScan() {
+            if (!isScanning || isTransmitting) return;
+            clearInterval(pressTimer);
+            pressTimer = null;
+            isScanning = false;
+            progress = 0;
+            laser.style.height = '0%';
+            scanPercentBadge.innerText = '0%';
+            scanHudTag.innerText = 'READY';
+            btn.classList.remove('scanning');
+            logTerminal("> BIOMETRIC SCAN CANCELLED. TAP TO RETRY.");
+        }
+
+        let pointerActive = false;
+        btn.addEventListener('pointerdown', (e) => {
+            pointerActive = true;
+            handlePointerDown(e);
+        });
+        btn.addEventListener('pointerup', handlePointerUp);
+        btn.addEventListener('click', (e) => {
+            if (pointerActive) {
+                pointerActive = false;
+                return;
+            }
+            if (!isScanning && !isTransmitting && lockdown.style.display !== 'flex') {
+                startScanSequence();
+            }
+        });
+        btn.addEventListener('keydown', (e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && !isScanning) {
+                e.preventDefault();
+                startScanSequence();
+            }
+        });
+
+        // 3. Multi-layer Transmission (PHP DB + BroadcastChannel + LocalStorage)
+        async function executeTransmission() {
+            if (isTransmitting) return;
+            isTransmitting = true;
+            isScanning = false;
+            btn.classList.remove('scanning');
+            btn.style.pointerEvents = 'none';
+
+            const deviceId = localStorage.getItem('sdn_device_id');
+            const payload = {
+                civilian_name: (currentMode === 'villain') ? `THREAT [${deviceId}]` : `CITIZEN [${deviceId}]`,
+                location: "Sector San Franz (Auto-Located)",
+                signal_type: currentMode,
+                requested_heroes: (currentMode === 'villain') ? "2,1" : "2,4"
+            };
+
+            // Attempt transmission to PHP backend first to obtain authoritative database ID
+            const candidateUrls = [
+                '../BACKEND/CODE_PHP/send_signal.php',
+                '../../BACKEND/CODE_PHP/send_signal.php',
+                '/BACKEND/CODE_PHP/send_signal.php'
+            ];
+            const pathParts = window.location.pathname.split('/');
+            const projIdx = pathParts.findIndex(p => p.toLowerCase().includes('project'));
+            if (projIdx !== -1) {
+                const subPath = pathParts.slice(0, projIdx + 1).join('/') + '/BACKEND/CODE_PHP/send_signal.php';
+                candidateUrls.unshift(subPath);
+            }
+
+            let resolvedSignal = null;
+            let serverSuccess = false;
+
+            for (const url of candidateUrls) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1800);
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.success && data.signal) {
+                            serverSuccess = true;
+                            resolvedSignal = data.signal;
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // Fallback to client beacon ONLY if backend is completely offline
+            if (!resolvedSignal) {
+                resolvedSignal = {
+                    id: 'local_' + deviceId + '_' + Date.now(),
+                    civilian_name: payload.civilian_name,
+                    location: payload.location,
+                    signal_type: payload.signal_type,
+                    requested_heroes: payload.requested_heroes,
+                    status: 'active',
+                    created_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+                };
+            }
+
+            // Save single beacon to LocalStorage and broadcast once
+            saveSignalToLocalStorage(resolvedSignal);
+
+            if (radarChannel) {
+                try {
+                    radarChannel.postMessage({ type: 'NEW_SIGNAL', signal: resolvedSignal });
+                } catch(err) {}
+            }
+
+            if (serverSuccess) {
+                logTerminal("> PING BROADCASTED TO CENTRAL TACTICAL MAINFRAME DB.");
+            } else {
+                logTerminal("> PING BROADCASTED TO SECTOR RADAR (LOCAL MESH UPLINK ACTIVE).");
+            }
+
+            const cdKey = `sdn_cd_${currentMode}`;
+            localStorage.setItem(cdKey, Date.now() + 60000); // 60s cooldown
+            startLockdownSequence();
+        }
+
+        function saveSignalToLocalStorage(sig) {
+            try {
+                let localSigs = JSON.parse(localStorage.getItem('sdn_local_signals') || '[]');
+                // Remove any existing beacon for this same civilian/threat entity to prevent doubling
+                localSigs = localSigs.filter(s => 
+                    String(s.id) !== String(sig.id) && 
+                    !(s.civilian_name === sig.civilian_name && s.signal_type === sig.signal_type)
+                );
+                localSigs.unshift(sig);
+                if (localSigs.length > 50) localSigs = localSigs.slice(0, 50);
+                localStorage.setItem('sdn_local_signals', JSON.stringify(localSigs));
+                window.dispatchEvent(new Event('storage'));
+            } catch(e) {}
+        }
+
+        // 4. Lockdown Sequence
+        function startLockdownSequence() {
+            isTransmitting = true;
+            laser.style.height = '0%';
+            scanPercentBadge.innerText = '0%';
+            scanHudTag.innerText = 'LOCKED';
+            lockdown.style.display = 'flex';
+            
+            const desc = document.getElementById('lockdown-desc');
+            const title = document.getElementById('lockdown-title');
+            if (currentMode === 'villain') {
+                title.innerText = "THREAT PING LOGGED";
+                desc.innerText = "COMBAT OPERATIVES ALERTED. RADAR UPDATED.";
+            } else {
+                title.innerText = "SOS PING LOGGED";
+                desc.innerText = "RESCUE OPERATIVES ALERTED. RADAR UPDATED.";
+            }
+
+            clearInterval(countdownTimer);
+            updateTimerDisplay();
+            countdownTimer = setInterval(updateTimerDisplay, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const cdKey = `sdn_cd_${currentMode}`;
+            const unlockTime = parseInt(localStorage.getItem(cdKey) || '0', 10);
+            const remaining = Math.ceil((unlockTime - Date.now()) / 1000);
+
+            if (remaining <= 0) {
+                overrideCooldown();
+            } else {
+                timerDisplay.innerText = remaining;
+            }
+        }
+
+        function overrideCooldown() {
+            clearInterval(countdownTimer);
+            const cdKey = `sdn_cd_${currentMode}`;
+            localStorage.removeItem(cdKey);
+            localStorage.removeItem('sdn_cooldown_green');
+            localStorage.removeItem('sdn_cooldown_red');
+            lockdown.style.display = 'none';
+            isTransmitting = false;
+            isScanning = false;
+            laser.style.height = '0%';
+            scanPercentBadge.innerText = '0%';
+            scanHudTag.innerText = 'READY';
+            btn.classList.remove('scanning');
+            btn.style.pointerEvents = 'auto';
+            logTerminal("> DEVICE READY FOR NEW TRANSMISSION.");
+        }
+
+        function checkCooldown() {
+            const cdKey = `sdn_cd_${currentMode}`;
+            const unlockTime = parseInt(localStorage.getItem(cdKey) || '0', 10);
+            if (unlockTime && Date.now() < unlockTime) {
+                startLockdownSequence();
+            } else {
+                lockdown.style.display = 'none';
+                isTransmitting = false;
+                btn.style.pointerEvents = 'auto';
+                scanHudTag.innerText = 'READY';
+                scanPercentBadge.innerText = '0%';
+            }
+        }
+
+        // Initialize on load
+        checkCooldown();
+    </script>
+</body>
+</html>

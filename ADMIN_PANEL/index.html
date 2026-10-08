@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Director Override // Hero Deployment</title>
+    <style>
+        body { background-color: #050505; color: #fff; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; flex-direction: column; gap: 0; }
+        .admin-box { border: 2px solid #fbc02d; padding: 30px; background: #0a0a00; text-align: center; width: 400px; box-shadow: 0 0 30px rgba(251, 192, 45, 0.15); box-sizing: border-box; }
+        h2 { color: #fbc02d; margin-top: 0; letter-spacing: 3px; }
+        p { font-size: 11px; color: #666; letter-spacing: 1px; margin-bottom: 20px; }
+        input, select { 
+            background: #000; border: 1px solid #555; color: #fff; padding: 14px; 
+            margin-bottom: 12px; width: 100%; box-sizing: border-box; text-align: center; 
+            font-family: monospace; font-size: 14px; outline: none; 
+        }
+        input:focus, select:focus { border-color: #fbc02d; box-shadow: 0 0 8px rgba(251,192,45,0.2); }
+        .btn-deploy {
+            background: #fbc02d; color: #000; border: none; padding: 15px; width: 100%; 
+            font-weight: bold; cursor: pointer; font-family: monospace; transition: 0.2s; 
+            font-size: 14px; letter-spacing: 2px; margin-bottom: 8px;
+        }
+        .btn-deploy:hover { background: #fff; }
+        .btn-advanced {
+            background: transparent; color: #fbc02d; border: 1px solid #fbc02d55; padding: 10px; 
+            width: 100%; font-weight: bold; cursor: pointer; font-family: monospace; 
+            transition: 0.2s; font-size: 11px; letter-spacing: 1px;
+        }
+        .btn-advanced:hover { background: rgba(251,192,45,0.1); }
+        #status { margin-top: 12px; font-size: 13px; font-weight: bold; min-height: 20px; transition: 0.3s; }
+        .divider { border: none; border-top: 1px solid #222; margin: 12px 0; }
+        .nav-links { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+        .nav-links a { 
+            color: #fbc02d; text-decoration: none; font-size: 11px; font-weight: bold; 
+            border: 1px solid #fbc02d44; padding: 5px 12px; border-radius: 3px; transition: 0.2s; 
+        }
+        .nav-links a:hover { background: rgba(251,192,45,0.12); box-shadow: 0 0 8px rgba(251,192,45,0.3); }
+        .nav-links a.teal { color: #1eb9a6; border-color: #1eb9a644; }
+        .nav-links a.teal:hover { box-shadow: 0 0 8px rgba(30,185,166,0.3); }
+
+        .hero-count-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(251,192,45,0.05); border: 1px solid #fbc02d33; 
+            padding: 8px 14px; border-radius: 3px; margin-bottom: 16px;
+            font-size: 11px; color: #888;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; box-shadow: 0 0 8px #4caf50; animation: blink 1.5s infinite; }
+        @keyframes blink { 0%,100%{opacity:.4} 50%{opacity:1} }
+        #hero-live-count { color: #fbc02d; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="admin-box">
+        <h2>DIRECTOR OVERRIDE</h2>
+        <p>AUTHORIZE NEW OPERATIVE FOR SECTOR DEPLOYMENT</p>
+        
+        <div class="hero-count-badge">
+            <div class="dot"></div>
+            ACTIVE OPERATIVES IN SECTOR: <span id="hero-live-count">SCANNING...</span>
+        </div>
+
+        <input type="text" id="heroName" placeholder="ENTER CODENAME (e.g. SHADOW)" autocomplete="off">
+        <select id="heroSkill">
+            <option value="brawler">BRAWLER (Combat / Weapons / Melee)</option>
+            <option value="elemental">ELEMENTAL (Fire / Ice / Energy)</option>
+            <option value="tech">TECH (Cybernetics / Support / Medical)</option>
+            <option value="mental">MENTAL (Telekinesis / Psionic)</option>
+        </select>
+        
+        <button class="btn-deploy" onclick="addHero()">⚡ AUTHORIZE & DEPLOY TO DISPATCH ROSTER</button>
+        
+        <hr class="divider">
+
+        <a href="/FRONT-END/DESIGN/admin_panel.html" class="btn-advanced" style="display:block; text-decoration:none; line-height:normal; padding: 10px;">
+            [HQ] OPEN FULL DIRECTOR CONSOLE (ADVANCED PANEL)
+        </a>
+
+        <div id="status"></div>
+
+        <div class="nav-links">
+            <a href="/FRONT-END/DESIGN/index.html" class="teal">[SAT] TERMINAL OS</a>
+            <a href="/FRONT-END/DESIGN/security_center.html">[DEF] SEC SOC</a>
+            <a href="/classified_data.html">[FILE] CLASSIFIED</a>
+        </div>
+    </div>
+
+    <script>
+        async function loadHeroCount() {
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/get_heroes.php?t=' + Date.now());
+                const data = await res.json();
+                const countEl = document.getElementById('hero-live-count');
+                if (data.success && countEl) {
+                    countEl.innerText = Object.keys(data.heroes || {}).length + ' OPERATIVES';
+                }
+            } catch(e) {}
+        }
+
+        async function addHero() {
+            const name = document.getElementById('heroName').value.trim().toUpperCase();
+            const skill = document.getElementById('heroSkill').value;
+            const statusDiv = document.getElementById('status');
+            
+            if (!name) { 
+                statusDiv.innerText = "ERROR: CODENAME IS REQUIRED"; 
+                statusDiv.style.color = "#e25b3e"; 
+                return; 
+            }
+
+            statusDiv.innerText = "UPLOADING TO MAINFRAME..."; 
+            statusDiv.style.color = "#fbc02d";
+
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/authorize_agent.php', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-SDN-Auth': 'SFXC-BlackOps-2026-Alpha'
+                    },
+                    body: JSON.stringify({ name: name, skill: skill })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    statusDiv.innerText = `✓ [${name}] DEPLOYED — DISPATCHER TERMINAL SYNCED.`;
+                    statusDiv.style.color = "#4caf50";
+                    document.getElementById('heroName').value = '';
+                    loadHeroCount();
+                } else {
+                    statusDiv.innerText = "SYSTEM ERROR: " + data.error;
+                    statusDiv.style.color = "#e25b3e";
+                }
+            } catch(e) {
+                statusDiv.innerText = "NETWORK ERROR: Database unreachable.";
+                statusDiv.style.color = "#e25b3e";
+            }
+        }
+
+        document.getElementById('heroName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addHero();
+        });
+
+        // Load hero count on boot and refresh every 5s
+        loadHeroCount();
+        setInterval(loadHeroCount, 5000);
+    </script>
+</body>
+</html>

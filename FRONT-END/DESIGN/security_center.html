@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SDN // SENTINEL COMMAND CENTER</title>
+    <style>
+        :root { --teal: #1eb9a6; --danger: #e25b3e; --warn: #ffeb3b; }
+        body { background: #020000; color: #e6dfd1; font-family: 'Courier New', monospace; margin: 0; padding: 30px; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; }
+        
+        .header { border-bottom: 2px solid var(--teal); padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; color: var(--teal); letter-spacing: 5px; font-size: 1.5rem; text-shadow: 0 0 10px rgba(30,185,166,0.5); }
+        
+        #global-status { padding: 10px 20px; font-weight: bold; font-size: 1.2rem; border: 2px solid var(--teal); color: var(--teal); background: rgba(30,185,166,0.1); letter-spacing: 2px; }
+
+        .dashboard-grid { display: flex; gap: 30px; flex: 1; }
+        
+        /* --- LEFT: FILE INTEGRITY MONITOR --- */
+        .panel { flex: 1; border: 1px solid #333; background: #050a09; padding: 20px; display: flex; flex-direction: column; }
+        .panel h2 { color: #aaa; font-size: 1rem; margin-top: 0; border-bottom: 1px dashed #555; padding-bottom: 10px; }
+        
+        .file-row { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #111; font-size: 0.9rem; align-items: center; }
+        .file-name { font-weight: bold; }
+        .file-tag { padding: 4px 8px; font-size: 0.75rem; font-weight: bold; background: #111; border: 1px solid; }
+
+        /* --- RIGHT: THREAT RESPONSE / DEFCON --- */
+        .threat-panel { flex: 1; border: 1px solid var(--danger); background: rgba(226, 91, 62, 0.05); padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .threat-icon { font-size: 4rem; margin-bottom: 20px; animation: pulse 2s infinite alternate; }
+        @keyframes pulse { from { text-shadow: 0 0 10px var(--danger); transform: scale(1); } to { text-shadow: 0 0 30px var(--danger); transform: scale(1.1); } }
+        
+        .auth-box { width: 100%; max-width: 300px; margin-top: 20px; }
+        .auth-box input { width: 100%; background: #000; border: 1px solid var(--danger); color: white; padding: 15px; font-family: inherit; text-align: center; outline: none; margin-bottom: 10px; font-weight: bold; }
+        .btn-defcon { width: 100%; background: var(--danger); color: black; border: none; padding: 15px; font-weight: bold; font-family: inherit; font-size: 1.1rem; cursor: pointer; transition: 0.2s; letter-spacing: 1px; }
+        .btn-defcon:hover { background: white; color: var(--danger); }
+        
+        .btn-restore { width: 100%; background: var(--teal); color: black; border: none; padding: 15px; font-weight: bold; font-family: inherit; font-size: 1rem; cursor: pointer; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>SENTINEL SECURITY COMMAND</h1>
+            <div style="display:flex; gap:10px; margin-top:8px;">
+                <a href="index.html" style="color:#1eb9a6; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #1eb9a655; padding:3px 8px; border-radius:3px;">[SAT] TERMINAL OS</a>
+                <a href="admin_panel.html" style="color:#ffeb3b; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #ffeb3b55; padding:3px 8px; border-radius:3px;">[HQ] ADMIN PANEL</a>
+                <a href="../../CIVILIAN_CLIENT/index.html" style="color:#4caf50; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #4caf5055; padding:3px 8px; border-radius:3px;">[SOS] CIVILIAN SOS</a>
+                <a href="../../classified_data.html" style="color:#b388ff; text-decoration:none; font-size:11px; font-weight:bold; border:1px solid #b388ff55; padding:3px 8px; border-radius:3px;">[FILE] CLASSIFIED</a>
+            </div>
+        </div>
+        <div id="global-status">SYSTEM SECURE</div>
+    </div>
+
+    <div class="dashboard-grid">
+        
+        <!-- CORE FILE SCANNER -->
+        <div class="panel">
+            <h2>[ FILE INTEGRITY MONITOR ]</h2>
+            <div id="file-list">
+                <div style="color: #666; font-style: italic;">Scanning server directories...</div>
+            </div>
+        </div>
+
+        <!-- MANUAL OVERRIDE -->
+        <div class="threat-panel">
+            <div class="threat-icon" id="threat-icon">[DEF]</div>
+            <h2 style="color: var(--danger); margin: 0; letter-spacing: 2px;">WAF MANUAL OVERRIDE</h2>
+            <p style="color: #aaa; font-size: 0.85rem; margin-bottom: 30px; max-width: 80%;">
+                Initiating DEFCON-1 will deploy the <strong>defcon.state</strong> lockfile. 
+                The Web Application Firewall will intercept and block all inbound database traffic immediately.
+            </p>
+
+            <div class="auth-box">
+                <input type="password" id="defcon-code" placeholder="ENTER OVERRIDE CODE" autocomplete="off">
+                <button class="btn-defcon" id="btn-lock" onclick="triggerDefcon('lock')">INITIATE DEFCON-1</button>
+                <button class="btn-restore" id="btn-unlock" onclick="triggerDefcon('unlock')">RESTORE NETWORK ACCESS</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- FILE INTEGRITY SCANNER LOGIC ---
+        async function scanFiles() {
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/file_monitor.php');
+                const data = await res.json();
+                
+                if (data.success) {
+                    const list = document.getElementById('file-list');
+                    let html = '';
+                    
+                    data.files.forEach(file => {
+                        html += `
+                            <div class="file-row">
+                                <div>
+                                    <div class="file-name" style="color: ${file.color};">${file.name}</div>
+                                    <div style="font-size: 10px; color: #666;">LAST MODIFIED: ${file.timestamp}</div>
+                                </div>
+                                <div class="file-tag" style="color: ${file.color}; border-color: ${file.color};">${file.status}</div>
+                            </div>
+                        `;
+                    });
+                    list.innerHTML = html;
+
+                    // Update global dashboard colors based on threat state
+                    const globalStatus = document.getElementById('global-status');
+                    const lockBtn = document.getElementById('btn-lock');
+                    const unlockBtn = document.getElementById('btn-unlock');
+                    const icon = document.getElementById('threat-icon');
+
+                    if (data.lockdown) {
+                        globalStatus.innerText = "DEFCON-1 ACTIVE: NETWORK LOCKED";
+                        globalStatus.style.color = "var(--danger)";
+                        globalStatus.style.borderColor = "var(--danger)";
+                        globalStatus.style.background = "rgba(226, 91, 62, 0.1)";
+                        lockBtn.style.display = "none";
+                        unlockBtn.style.display = "block";
+                        icon.innerText = "[!]";
+                    } else if (data.compromised) {
+                        globalStatus.innerText = "WARNING: FILE COMPROMISE DETECTED";
+                        globalStatus.style.color = "var(--warn)";
+                        globalStatus.style.borderColor = "var(--warn)";
+                        globalStatus.style.background = "rgba(255, 235, 59, 0.1)";
+                        icon.innerText = "[!!]";
+                    } else {
+                        globalStatus.innerText = "ALL SYSTEMS SECURE";
+                        globalStatus.style.color = "var(--teal)";
+                        globalStatus.style.borderColor = "var(--teal)";
+                        globalStatus.style.background = "rgba(30,185,166,0.1)";
+                        lockBtn.style.display = "block";
+                        unlockBtn.style.display = "none";
+                        icon.innerText = "[DEF]";
+                    }
+                }
+            } catch(e) {}
+        }
+
+        // --- WAF LOCKDOWN LOGIC ---
+        async function triggerDefcon(action) {
+            const code = document.getElementById('defcon-code').value;
+            if (!code) return;
+
+            try {
+                const res = await fetch('/BACKEND/CODE_PHP/defcon.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, action: action })
+                });
+                const data = await res.json();
+                
+                if (!data.success) {
+                    alert("AUTHORIZATION FAILED: " + data.error);
+                }
+                document.getElementById('defcon-code').value = '';
+                scanFiles(); // Instantly update the UI
+            } catch(e) {}
+        }
+
+        // Keep scanning the server every 2 seconds
+        scanFiles();
+        setInterval(scanFiles, 2000);
+    </script>
+</body>
+</html>
