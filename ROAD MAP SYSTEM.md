@@ -88,7 +88,7 @@ All PHP endpoints are in `BACKEND/CODE_PHP/`. The following is a file-purpose ma
 | `secure_line.php` | Secure-line communications used by shared client helpers and admin UI. |
 | `auth.php` | Shared authentication for the tactical terminal and director console; dispatcher access requires worker ID `123123` plus the existing dispatcher password. Accepts bounded JSON POST requests and compares passwords with `password_verify()` without running SQL. |
 | `worker_accounts.php`, `worker_account_store.php` | Director-session-only dispatcher account creation, listing, and deletion. Passwords are stored as password hashes in protected `BACKEND/QUERY/worker_accounts.json`. |
-| `auth_throttle.php` | File-backed login throttling: five failures per IP or worker ID in a rolling ten-minute window, stored under protected `BACKEND/QUERY`. |
+| `auth_throttle.php` | File-backed login throttling: five failures per IP or worker ID in a rolling one-minute window, stored under protected `BACKEND/QUERY`. High Command displays the server-provided retry countdown. |
 | `audit_log.php`, `audit_events.php` | Appends security events to `BACKEND/QUERY/audit.log`; only a director session can retrieve recent events. |
 | `defcon.php` | DEFCON/threat-level controls. |
 | `file_monitor.php`, `security_guard.php`, `waf.php` | Security monitoring, system-wide API lockdown enforcement, and request filtering/rate limiting. |

@@ -301,6 +301,57 @@
             color: #000;
             box-shadow: 0 0 15px var(--theme-color);
         }
+        #dispatch-notice {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.88);
+        }
+        .dispatch-notice-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 26px;
+            border: 2px solid var(--neon-green);
+            border-radius: 8px;
+            background: #040d06;
+            box-shadow: 0 0 35px rgba(51, 255, 51, 0.35);
+            text-align: center;
+        }
+        .dispatch-notice-card h2 {
+            margin: 0 0 14px;
+            color: var(--neon-green);
+            font-size: 20px;
+            letter-spacing: 1px;
+        }
+        .dispatch-notice-card p {
+            color: #d6e8d6;
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+        #dispatch-notice-heroes {
+            color: #fff;
+            font-weight: bold;
+        }
+        #dispatch-notice-close {
+            margin-top: 10px;
+            padding: 10px 18px;
+            border: 1px solid var(--neon-green);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--neon-green);
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #dispatch-notice-close:hover {
+            background: var(--neon-green);
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -366,6 +417,15 @@
 
     </div>
 
+    <div id="dispatch-notice" role="dialog" aria-modal="true" aria-labelledby="dispatch-notice-title" aria-describedby="dispatch-notice-message">
+        <div class="dispatch-notice-card">
+            <h2 id="dispatch-notice-title">RESCUE TEAM DISPATCHED</h2>
+            <p id="dispatch-notice-message">Your rescue request has been received. Help is on the way.</p>
+            <p>Responding team: <span id="dispatch-notice-heroes"></span></p>
+            <button id="dispatch-notice-close" type="button">ACKNOWLEDGE</button>
+        </div>
+    </div>
+
     <script>
         let currentMode = 'emergency'; // 'emergency' or 'villain'
 
@@ -397,11 +457,24 @@
         const radarChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('sdn_emergency_network') : null;
         if (radarChannel) {
             radarChannel.onmessage = (event) => {
-                if (event.data && (event.data.type === 'CLEAR_SIGNALS' || event.data.type === 'REMOVE_SIGNAL')) {
+                if (event.data && event.data.type === 'RESCUE_DISPATCHED') {
+                    const deviceId = localStorage.getItem('sdn_device_id') || '';
+                    if (!deviceId || event.data.signal_type !== 'emergency' || !String(event.data.civilian_name || '').includes(deviceId)) return;
+
+                    document.getElementById('dispatch-notice-message').textContent =
+                        `Your rescue request at ${event.data.location || 'your reported location'} is confirmed. The team is on its way.`;
+                    document.getElementById('dispatch-notice-heroes').textContent =
+                        Array.isArray(event.data.heroes) && event.data.heroes.length ? event.data.heroes.join(' & ') : 'Rescue team';
+                    document.getElementById('dispatch-notice').style.display = 'flex';
+                    logTerminal("> RESCUE TEAM DISPATCHED. HELP IS ON THE WAY.");
+                } else if (event.data && (event.data.type === 'CLEAR_SIGNALS' || event.data.type === 'REMOVE_SIGNAL')) {
                     logTerminal("> <span style='color:var(--theme-color)'>TACTICAL UPDATE: DISPATCH UNIT ARRIVED. BEACON DEACTIVATED.</span>");
                 }
             };
         }
+        document.getElementById('dispatch-notice-close').addEventListener('click', () => {
+            document.getElementById('dispatch-notice').style.display = 'none';
+        });
 
         // Web Audio Synthesizer (Zero external dependencies)
         let audioCtx = null;

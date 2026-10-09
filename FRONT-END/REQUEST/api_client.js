@@ -507,12 +507,38 @@ async function executeDispatch() {
     dispatchedHeroIds.forEach((id, index) => {
         const heroWrapper = document.getElementById(`hero-pin-${id}`);
         if(heroWrapper) {
+            heroWrapper.style.transition = 'left 3.5s ease-in-out, top 3.5s ease-in-out';
+            heroWrapper.classList.add('responding');
             heroWrapper.style.left = `calc(${targetX}% + ${index === 1 ? 2 : 0}%)`;
             heroWrapper.style.top = `calc(${targetY}% + ${index === 1 ? -2 : 0}%)`;
         }
     });
 
+    if (!isVillain && radarNetworkChannel) {
+        try {
+            const heroes = dispatchedHeroIds
+                .map(heroId => activeState.heroes?.[heroId]?.name)
+                .filter(Boolean);
+            radarNetworkChannel.postMessage({
+                type: 'RESCUE_DISPATCHED',
+                civilian_name: sig.civilian_name,
+                signal_type: sig.signal_type,
+                location: dispatchLocation,
+                heroes
+            });
+        } catch (err) {
+            console.error('Could not notify the civilian app about the rescue dispatch:', err);
+        }
+    }
+
     setTimeout(async () => {
+        dispatchedHeroIds.forEach(id => {
+            const heroWrapper = document.getElementById(`hero-pin-${id}`);
+            if (heroWrapper) {
+                heroWrapper.classList.remove('responding');
+                heroWrapper.style.transition = 'left 0.8s ease, top 0.8s ease';
+            }
+        });
         const fxDiv = document.createElement('div');
         fxDiv.style.position = "absolute";
         fxDiv.style.left = `${targetX}%`; fxDiv.style.top = `${targetY}%`;
@@ -622,7 +648,7 @@ async function executeDispatch() {
                 isAnimating = false;
             }
         }, 1500);
-    }, 600); 
+    }, 3500);
 }
 
 // --- RENDER MAP & UI WITH AI ADVISORY ---

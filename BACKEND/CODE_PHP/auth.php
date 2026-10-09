@@ -68,11 +68,16 @@ $ipAttemptKey = hash('sha256', $clientAddress);
 $accountAttemptKey = hash('sha256', $clientAddress . "\0" . $workerId);
 
 try {
-    if (!auth_throttle_update($ipAttemptKey, false) || !auth_throttle_update($accountAttemptKey, false)) {
+    $ipRetryAfter = 0;
+    $accountRetryAfter = 0;
+    $ipAttemptsAllowed = auth_throttle_update($ipAttemptKey, false, $ipRetryAfter);
+    $accountAttemptsAllowed = auth_throttle_update($accountAttemptKey, false, $accountRetryAfter);
+    if (!$ipAttemptsAllowed || !$accountAttemptsAllowed) {
+        $retryAfter = max(1, $ipRetryAfter, $accountRetryAfter);
         write_audit_event('login', $workerId ?: 'unknown', 'rate_limited', $clientAddress);
         http_response_code(429);
-        header('Retry-After: 600');
-        echo json_encode(["success" => false, "message" => "TOO MANY FAILED ATTEMPTS. TRY AGAIN IN 10 MINUTES."]);
+        header('Retry-After: ' . $retryAfter);
+        echo json_encode(["success" => false, "message" => "TOO MANY FAILED ATTEMPTS."]);
         exit;
     }
 } catch (RuntimeException $error) {
@@ -133,13 +138,16 @@ if (($workerId === $dispatcherWorkerId && password_verify($input_password, $hash
     ]);
 } else {
     try {
-        $ipAttemptsAllowed = auth_throttle_update($ipAttemptKey, true);
-        $accountAttemptsAllowed = auth_throttle_update($accountAttemptKey, true);
+        $ipRetryAfter = 0;
+        $accountRetryAfter = 0;
+        $ipAttemptsAllowed = auth_throttle_update($ipAttemptKey, true, $ipRetryAfter);
+        $accountAttemptsAllowed = auth_throttle_update($accountAttemptKey, true, $accountRetryAfter);
         write_audit_event('login', $workerId ?: 'unknown', 'failure', $clientAddress);
         if (!$ipAttemptsAllowed || !$accountAttemptsAllowed) {
+            $retryAfter = max(1, $ipRetryAfter, $accountRetryAfter);
             http_response_code(429);
-            header('Retry-After: 600');
-            echo json_encode(["success" => false, "message" => "TOO MANY FAILED ATTEMPTS. TRY AGAIN IN 10 MINUTES."]);
+            header('Retry-After: ' . $retryAfter);
+            echo json_encode(["success" => false, "message" => "TOO MANY FAILED ATTEMPTS."]);
             exit;
         }
     } catch (RuntimeException $error) {

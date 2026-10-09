@@ -1,6 +1,7 @@
 <?php
-function auth_throttle_update($key, $failed) {
+function auth_throttle_update($key, $failed, &$retryAfter = null) {
     $path = __DIR__ . '/../QUERY/login_attempts.json';
+    $windowSeconds = 60;
     $file = fopen($path, 'c+');
     if ($file === false) {
         throw new RuntimeException('Could not open login throttle storage.');
@@ -25,8 +26,8 @@ function auth_throttle_update($key, $failed) {
             unset($attempts[$entryKey]);
             continue;
         }
-        $times = array_values(array_filter($times, static function ($timestamp) use ($now) {
-            return is_int($timestamp) && $timestamp > $now - 600;
+        $times = array_values(array_filter($times, static function ($timestamp) use ($now, $windowSeconds) {
+            return is_int($timestamp) && $timestamp > $now - $windowSeconds;
         }));
         if ($times === []) {
             unset($attempts[$entryKey]);
@@ -44,6 +45,9 @@ function auth_throttle_update($key, $failed) {
         $attempts[$key] = $keyAttempts;
     }
     $allowed = count($keyAttempts) < 5;
+    if (!$allowed && $keyAttempts !== []) {
+        $retryAfter = max(1, $keyAttempts[0] + $windowSeconds - $now);
+    }
 
     $encoded = json_encode($attempts, JSON_UNESCAPED_SLASHES);
     if (!is_string($encoded)) {

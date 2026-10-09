@@ -7,3 +7,9 @@
 {"timestamp":"2026-10-08T18:43:55+00:00","action":"classified_reserves_read","actor":"director","result":"success","details":""}
 {"timestamp":"2026-10-08T18:44:29+00:00","action":"worker_account_created","actor":"super_admin","result":"success","details":"121212"}
 {"timestamp":"2026-10-08T18:44:51+00:00","action":"login","actor":"121212","result":"success","details":"::1"}
+{"timestamp":"2026-10-09T06:38:58+00:00","action":"login","actor":"director","result":"success","details":"::1"}
+{"timestamp":"2026-10-09T06:38:58+00:00","action":"classified_reserves_read","actor":"director","result":"success","details":""}
+{"timestamp":"2026-10-09T06:39:02+00:00","action":"classified_reserves_read","actor":"director","result":"success","details":""}
+{"timestamp":"2026-10-09T06:45:05+00:00","action":"login","actor":"director","result":"success","details":"::1"}
+{"timestamp":"2026-10-09T06:45:05+00:00","action":"classified_reserves_read","actor":"director","result":"success","details":""}
+{"timestamp":"2026-10-09T06:45:20+00:00","action":"login","actor":"123123","result":"success","details":"::1"}

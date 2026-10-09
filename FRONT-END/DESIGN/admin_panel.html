@@ -51,7 +51,7 @@
             letter-spacing: 2px; transition: 0.2s;
         }
         .login-box button:hover { background: white; }
-        #login-error { color: var(--danger); font-size: 0.85rem; margin-top: 15px; height: 15px; font-weight: bold; }
+        #login-error { color: var(--danger); font-size: 0.85rem; margin-top: 15px; min-height: 1em; font-weight: bold; }
 
         /* --- TOP TELEMETRY NAVBAR --- */
         #admin-topbar {
@@ -583,8 +583,8 @@
             <h1>HIGH COMMAND</h1>
             <p>DIRECTOR-LEVEL AUTHORIZATION REQUIRED</p>
                 <input type="password" id="director-pass" placeholder="ENTER KEY" autofocus>
-            <button onclick="authDirector()">AUTHORIZE UPLINK</button>
-            <div id="login-error"></div>
+            <button id="director-login-button" onclick="authDirector()">AUTHORIZE UPLINK</button>
+            <div id="login-error" role="status" aria-live="polite"></div>
             <div style="margin-top:20px; font-size:12px;">
                 <a href="index.html" style="color:var(--admin); text-decoration:none; opacity:0.8;">← RETURN TO TERMINAL OS</a>
             </div>
@@ -705,12 +705,14 @@
         let currentVaultTab = 'active'; // 'active' or 'reserves'
         let vaultChartInstances = {};
         let activeHeroesMap = {};
+        let loginCooldownTimer = null;
 
         let classifiedAgents = {};
         let classifiedAgentsLoaded = false;
 
         // --- AUTHENTICATION ---
         async function authDirector() {
+            if (loginCooldownTimer !== null) return;
             const pass = document.getElementById('director-pass').value.trim();
             const err = document.getElementById('login-error');
             err.style.color = "var(--admin)";
@@ -732,12 +734,45 @@
                     err.innerText = "ACCESS DENIED: CLEARANCE TOO LOW.";
                 } else {
                     err.style.color = "var(--danger)";
-                    err.innerText = data.message || "ACCESS DENIED.";
+                    if (res.status === 429) {
+                        startLoginCooldown(Number(res.headers.get('Retry-After')) || 60);
+                    } else {
+                        err.innerText = data.message || "ACCESS DENIED.";
+                    }
                 }
             } catch (e) {
                 err.style.color = "var(--danger)";
                 err.innerText = "UPLINK FAILED.";
             }
+        }
+
+        function startLoginCooldown(seconds) {
+            const input = document.getElementById('director-pass');
+            const button = document.getElementById('director-login-button');
+            const err = document.getElementById('login-error');
+            const unlockAt = Date.now() + Math.max(1, Math.ceil(seconds)) * 1000;
+            input.disabled = true;
+            button.disabled = true;
+
+            const updateCountdown = () => {
+                const remaining = Math.ceil((unlockAt - Date.now()) / 1000);
+                if (remaining <= 0) {
+                    clearInterval(loginCooldownTimer);
+                    loginCooldownTimer = null;
+                    input.disabled = false;
+                    button.disabled = false;
+                    err.style.color = "var(--admin)";
+                    err.innerText = "LOCKOUT ENDED. YOU MAY TRY AGAIN.";
+                    return;
+                }
+                err.style.color = "var(--danger)";
+                err.innerText = `RATE LIMITED. RETRY IN ${remaining} SECOND${remaining === 1 ? '' : 'S'}.`;
+                remaining -= 1;
+            };
+
+            if (loginCooldownTimer !== null) clearInterval(loginCooldownTimer);
+            updateCountdown();
+            loginCooldownTimer = setInterval(updateCountdown, 1000);
         }
 
         function bootDashboard() {
