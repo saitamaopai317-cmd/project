@@ -233,10 +233,16 @@ function get_all_heroes() {
     $rawName = $hero['name'] ?? '';
     $decodedName = base64_decode($rawName, true);
     $name = $decodedName !== false ? $decodedName : $rawName;
+    $skill = $hero['skill'] ?? 'tech';
+    $element = strtolower(trim((string)($hero['element'] ?? '')));
+    if ($skill === 'elemental' && !in_array($element, ['fire', 'ice', 'water', 'energy'], true)) {
+        $element = strtoupper($name) === 'FLAMBAE' ? 'fire' : 'energy';
+    }
     $heroes[$id] = [
         'id' => $id,
         'name' => $name ?: 'Agent',
-        'skill' => $hero['skill'] ?? 'tech',
+        'skill' => $skill,
+        'element' => $skill === 'elemental' ? $element : null,
         'status' => $hero['status'] ?? 'RESTING',
         'stat_combat' => (int)($hero['stat_combat'] ?? 65),
         'stat_defense' => (int)($hero['stat_defense'] ?? 50),
@@ -251,8 +257,14 @@ function get_all_heroes() {
     return $heroes;
 }
 
-function add_hero_record($name, $skill, $stats = [], $x = null, $y = null) {
-    return modify_db(function(&$db) use ($name, $skill, $stats, $x, $y) {
+function add_hero_record($name, $skill, $stats = [], $x = null, $y = null, $element = null) {
+    $normalizedSkill = strtolower(trim($skill));
+    $normalizedElement = strtolower(trim((string)$element));
+    if ($normalizedSkill === 'elemental' && !in_array($normalizedElement, ['fire', 'ice', 'water', 'energy'], true)) {
+        throw new InvalidArgumentException('Choose a valid elemental type: fire, ice, water, or energy.');
+    }
+
+    return modify_db(function(&$db) use ($name, $normalizedSkill, $normalizedElement, $stats, $x, $y) {
         $maxId = 0;
         foreach ($db['heroes'] as $h) {
             $num = (int)($h['id'] ?? 0);
@@ -271,7 +283,8 @@ function add_hero_record($name, $skill, $stats = [], $x = null, $y = null) {
         $hero = [
             'id' => $nextId,
             'name' => $encodedName,
-            'skill' => strtolower(trim($skill)),
+            'skill' => $normalizedSkill,
+            'element' => $normalizedSkill === 'elemental' ? $normalizedElement : null,
             'status' => 'RESTING',
             'stat_combat' => (int)($stats['combat'] ?? 65),
             'stat_defense' => (int)($stats['defense'] ?? 50),

@@ -69,6 +69,9 @@ async function fetchWeather() {
         if (typeof validateAction === 'function') {
             validateAction();
         }
+        if (typeof updateHeroStatsUI === 'function') {
+            updateHeroStatsUI();
+        }
         const fx = document.getElementById("weather-fx");
         if (fx) {
             fx.className = "weather-overlay " + window.weatherOverlayClass;
@@ -132,6 +135,7 @@ function toggleTestWeather() {
         renderMap();
         if (typeof validateAction === 'function') validateAction();
     }
+    if (typeof updateHeroStatsUI === 'function') updateHeroStatsUI();
 }
 
 // Auto-initialize weather fetch on load

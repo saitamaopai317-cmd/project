@@ -62,9 +62,15 @@
         <input type="text" id="heroName" placeholder="ENTER CODENAME (e.g. SHADOW)" autocomplete="off">
         <select id="heroSkill">
             <option value="brawler">BRAWLER (Combat / Weapons / Melee)</option>
-            <option value="elemental">ELEMENTAL (Fire / Ice / Energy)</option>
+            <option value="elemental">ELEMENTAL</option>
             <option value="tech">TECH (Cybernetics / Support / Medical)</option>
             <option value="mental">MENTAL (Telekinesis / Psionic)</option>
+        </select>
+        <select id="heroElement" aria-label="Elemental type" hidden>
+            <option value="fire">FIRE</option>
+            <option value="ice">ICE</option>
+            <option value="water">WATER</option>
+            <option value="energy">ENERGY</option>
         </select>
         
         <button class="btn-deploy" onclick="addHero()">⚡ AUTHORIZE & DEPLOY TO DISPATCH ROSTER</button>
@@ -99,6 +105,7 @@
         async function addHero() {
             const name = document.getElementById('heroName').value.trim().toUpperCase();
             const skill = document.getElementById('heroSkill').value;
+            const element = document.getElementById('heroElement').value;
             const statusDiv = document.getElementById('status');
             
             if (!name) { 
@@ -117,7 +124,7 @@
                         'Content-Type': 'application/json',
                         'X-SDN-Auth': 'SFXC-BlackOps-2026-Alpha'
                     },
-                    body: JSON.stringify({ name: name, skill: skill })
+                    body: JSON.stringify({ name: name, skill: skill, element: element })
                 });
                 const data = await res.json();
                 
@@ -135,6 +142,13 @@
                 statusDiv.style.color = "#e25b3e";
             }
         }
+
+        function updateElementVisibility() {
+            document.getElementById('heroElement').hidden = document.getElementById('heroSkill').value !== 'elemental';
+        }
+
+        document.getElementById('heroSkill').addEventListener('change', updateElementVisibility);
+        updateElementVisibility();
 
         document.getElementById('heroName').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') addHero();

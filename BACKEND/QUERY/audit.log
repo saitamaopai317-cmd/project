@@ -13,3 +13,8 @@
 {"timestamp":"2026-10-09T06:45:05+00:00","action":"login","actor":"director","result":"success","details":"::1"}
 {"timestamp":"2026-10-09T06:45:05+00:00","action":"classified_reserves_read","actor":"director","result":"success","details":""}
 {"timestamp":"2026-10-09T06:45:20+00:00","action":"login","actor":"123123","result":"success","details":"::1"}
+{"timestamp":"2026-10-09T07:15:47+00:00","action":"login","actor":"123123","result":"success","details":"::1"}
+{"timestamp":"2026-10-09T07:19:07+00:00","action":"login","actor":"director","result":"success","details":"::1"}
+{"timestamp":"2026-10-09T07:19:07+00:00","action":"classified_reserves_read","actor":"123123","result":"success","details":""}
+{"timestamp":"2026-10-09T07:28:57+00:00","action":"login","actor":"director","result":"success","details":"::1"}
+{"timestamp":"2026-10-09T07:28:57+00:00","action":"classified_reserves_read","actor":"123123","result":"success","details":""}

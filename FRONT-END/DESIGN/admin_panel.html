@@ -650,9 +650,15 @@
                     <input type="text" id="new-alias" placeholder="CODENAME / ALIAS (e.g. TITAN)" autocomplete="off">
                     <select id="new-skill">
                         <option value="brawler">BRAWLER (Combat / Armor / Melee)</option>
-                        <option value="elemental">ELEMENTAL (Fire / Ice / Energy)</option>
+                        <option value="elemental">ELEMENTAL</option>
                         <option value="tech">TECH (Cybernetics / Support / Intel)</option>
                         <option value="mental">MENTAL (Telekinesis / Psionic)</option>
+                    </select>
+                    <select id="new-element" aria-label="Elemental type" hidden>
+                        <option value="fire">FIRE</option>
+                        <option value="ice">ICE</option>
+                        <option value="water">WATER</option>
+                        <option value="energy">ENERGY</option>
                     </select>
                 </div>
                 <div class="creator-grid">
@@ -873,6 +879,12 @@
         }
 
         // --- HERO CREATION: DIRECT DEPLOY ---
+        function updateElementVisibility() {
+            document.getElementById('new-element').hidden = document.getElementById('new-skill').value !== 'elemental';
+        }
+        document.getElementById('new-skill').addEventListener('change', updateElementVisibility);
+        updateElementVisibility();
+
         async function deployHeroDirectly() {
             const alias = document.getElementById('new-alias').value.trim();
             const skill = document.getElementById('new-skill').value.trim();
@@ -887,6 +899,7 @@
             const payload = {
                 name: alias.toUpperCase(),
                 skill: skill.toLowerCase(),
+                element: skill.toLowerCase() === 'elemental' ? document.getElementById('new-element').value : null,
                 combat: parseInt(document.getElementById('s-atk').value) || 75,
                 defense: parseInt(document.getElementById('s-def').value) || 60,
                 agility: parseInt(document.getElementById('s-agi').value) || 70,
@@ -946,6 +959,7 @@
             classifiedAgents[resId] = {
                 name: alias.toUpperCase(),
                 skill: skill.toLowerCase(),
+                element: skill.toLowerCase() === 'elemental' ? document.getElementById('new-element').value : null,
                 true_name: document.getElementById('new-trueid').value.trim() || 'CLASSIFIED DOSSIER',
                 blood_type: document.getElementById('new-blood').value.trim() || 'UNKNOWN',
                 eval: document.getElementById('new-eval').value.trim() || 'Stored in black ops reserves.',
@@ -1149,6 +1163,7 @@
                     body: JSON.stringify({ 
                         name: agent.name, 
                         skill: agent.skill,
+                        element: agent.element || null,
                         combat: agent.stats.combat, 
                         defense: agent.stats.defense, 
                         agility: agent.stats.agility, 

@@ -178,7 +178,7 @@ function getCandidateEndpoints(file) {
 }
 
 const fallbackDefaultHeroes = {
-    '1': { id: 1, name: 'FLAMBAE', skill: 'elemental', status: 'RESTING', stat_combat: 85, stat_defense: 50, stat_agility: 75, stat_comms: 60, stat_intel: 65, deeds_logged: 0, x: 50, y: 80 },
+    '1': { id: 1, name: 'FLAMBAE', skill: 'elemental', element: 'fire', status: 'RESTING', stat_combat: 85, stat_defense: 50, stat_agility: 75, stat_comms: 60, stat_intel: 65, deeds_logged: 0, x: 50, y: 80 },
     '2': { id: 2, name: 'AEGIS', skill: 'brawler', status: 'RESTING', stat_combat: 70, stat_defense: 90, stat_agility: 55, stat_comms: 50, stat_intel: 60, deeds_logged: 0, x: 30, y: 75 },
     '3': { id: 3, name: 'ATLAS', skill: 'brawler', status: 'RESTING', stat_combat: 80, stat_defense: 85, stat_agility: 60, stat_comms: 45, stat_intel: 55, deeds_logged: 0, x: 80, y: 80 },
     '4': { id: 4, name: 'ROS AN', skill: 'tech', status: 'RESTING', stat_combat: 50, stat_defense: 60, stat_agility: 70, stat_comms: 90, stat_intel: 95, deeds_logged: 0, x: 20, y: 65 },
@@ -759,7 +759,10 @@ function renderRoster() {
         const isSelected = selectedHeroes.some(id => String(id) === strId);
         card.className = `roster-card ${isSelected ? 'selected' : ''}`;
         card.setAttribute('data-hero-id', strId);
-        card.innerHTML = `<div class="status-bar status-${hero.status}">${hero.status}</div><div class="portrait">👤 <div class="skill-tag">${hero.skill}</div></div><div class="name-plate">${hero.name}</div>`;
+        const heroClass = String(hero.skill || 'tech').toUpperCase();
+        const heroElement = getHeroElement(hero);
+        const specialty = heroElement ? `${heroClass} / ${heroElement.toUpperCase()}` : heroClass;
+        card.innerHTML = `<div class="status-bar status-${hero.status}">${hero.status}</div><div class="portrait">👤 <div class="skill-tag">${specialty}</div></div><div class="name-plate">${hero.name}</div>`;
         card.onclick = () => { 
             if (isAnimating) return;
             const index = selectedHeroes.findIndex(id => String(id) === strId);
@@ -858,10 +861,15 @@ function isRainBlockedSquad() {
     if (!window.isRaining) return false;
     return selectedHeroes.some(id => {
         const hero = activeState.heroes ? (activeState.heroes[id] || activeState.heroes[String(id)]) : null;
-        const skill = String(hero?.skill || '').toLowerCase();
-        const name = String(hero?.name || '').toUpperCase();
-        return skill === 'elemental' || name === 'FLAMBAE';
+        return getHeroElement(hero) === 'fire';
     });
+}
+
+function getHeroElement(hero) {
+    if (String(hero?.skill || '').toLowerCase() !== 'elemental') return '';
+    const element = String(hero?.element || '').toLowerCase();
+    if (['fire', 'ice', 'water', 'energy'].includes(element)) return element;
+    return String(hero?.name || '').toUpperCase() === 'FLAMBAE' ? 'fire' : 'energy';
 }
 
 // --- HERO STATS RADAR & LOGS ---
@@ -895,7 +903,29 @@ function renderHeroStats(hero) {
     const ctx = canvas.getContext('2d');
     if (heroChartInstance) heroChartInstance.destroy();
 
-    const combat = hero.stat_combat !== undefined ? parseInt(hero.stat_combat) : 65;
+    const element = getHeroElement(hero);
+    const rainActive = Boolean(window.isRaining);
+    const baseCombat = hero.stat_combat !== undefined ? parseInt(hero.stat_combat) : 65;
+    const rainBoost = rainActive && (element === 'ice' || element === 'water')
+        ? Math.min(20, Math.max(0, 100 - baseCombat))
+        : 0;
+    const weatherEffect = document.getElementById('hero-weather-effect');
+    if (weatherEffect) {
+        if (element && rainActive && element === 'fire') {
+            weatherEffect.innerText = `ELEMENT: FIRE // RAIN LOCKOUT`;
+            weatherEffect.style.color = '#9ecbff';
+        } else if (element && rainBoost) {
+            weatherEffect.innerText = `ELEMENT: ${element.toUpperCase()} // RAIN BOOST: +${rainBoost} COMBAT`;
+            weatherEffect.style.color = '#71e4d2';
+        } else if (element) {
+            weatherEffect.innerText = `ELEMENT: ${element.toUpperCase()} // NO WEATHER MODIFIER`;
+            weatherEffect.style.color = '#ddd';
+        } else {
+            weatherEffect.innerText = `CLASS: ${String(hero.skill || 'tech').toUpperCase()}`;
+            weatherEffect.style.color = '#ddd';
+        }
+    }
+    const combat = Math.min(100, baseCombat + rainBoost);
     const defense = hero.stat_defense !== undefined ? parseInt(hero.stat_defense) : 50;
     const agility = hero.stat_agility !== undefined ? parseInt(hero.stat_agility) : 70;
     const comms = hero.stat_comms !== undefined ? parseInt(hero.stat_comms) : 45;

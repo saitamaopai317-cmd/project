@@ -34,7 +34,8 @@ try {
     $posY = isset($data['y']) ? (int)$data['y'] : rand(25, 75);
 
     $heroName = strtoupper(trim(strip_tags($data['name'])));
-    $hero = add_hero_record($heroName, $rawSkill, $stats, $posX, $posY);
+    $element = strtolower(trim($data['element'] ?? ''));
+    $hero = add_hero_record($heroName, $rawSkill, $stats, $posX, $posY, $element);
 
     echo json_encode(['success' => true, 'hero' => $hero, 'message' => "Hero {$heroName} successfully deployed to active roster."]);
 } catch (Exception $e) {
